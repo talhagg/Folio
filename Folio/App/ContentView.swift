@@ -257,6 +257,7 @@ struct ContentView: View {
     }
 }
 
+#if DEBUG
 #Preview("Light") {
     ContentView()
         .modelContainer(SampleData.container())
@@ -270,3 +271,4 @@ struct ContentView: View {
         .frame(width: 1140, height: 700)
         .preferredColorScheme(.dark)
 }
+#endif

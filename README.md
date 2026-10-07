@@ -17,25 +17,25 @@
 - **Son Silinenler:** silinen notlar 90 gün saklanır, sonra otomatik silinir; geri yüklenebilir.
 - **Sürükle-bırak:** notları bölümler arasında ya da çöpe taşıma.
 - **Kaydırarak silme:** trackpad'de notu sola kaydırınca Sil düğmesi açılır; uzun kaydırma doğrudan siler (onaylı).
+- **iCloud senkronu:** notlar aynı Apple hesabındaki Mac'ler arasında senkronlanır.
 - Açık/koyu tema, klavyeyle gezinme, pencere ve sütun genişliklerini hatırlama.
 - Üçüncü parti bağımlılık yok: Swift 6, SwiftUI, SwiftData.
 
 ## Kurulum (DMG)
 
-1. [Releases](../../releases) sayfasından `Folio-x.y.dmg` dosyasını indirin.
-2. DMG'yi açın, **Folio**'yu **Applications** klasörüne sürükleyin.
-3. İlk açılış: Folio henüz Apple tarafından notarize edilmedi, bu yüzden macOS ilk açılışta engeller.
-   **Sistem Ayarları → Gizlilik ve Güvenlik** sayfasının altındaki **"Yine de Aç"** düğmesine basın.
-   (Bu yalnızca bir kez gerekir.)
+1. [Releases](../../releases) sayfasından en son `Folio-x.y.dmg` dosyasını indirin.
+2. DMG'yi açın, **Folio**'yu **Applications** klasörüne sürükleyin ve çalıştırın.
+
+Folio, Developer ID ile imzalı ve Apple tarafından notarize edilmiştir; ek bir onay adımı gerekmez.
 
 İndirilen dosyanın bütünlüğünü sürüm notlarındaki SHA-256 ile doğrulayabilirsiniz:
 
 ```bash
-shasum -a 256 Folio-0.1.dmg
+shasum -a 256 Folio-0.2.dmg
 ```
 
-> **Not:** DMG sürümü iCloud senkronu içermez; notlar yalnızca bu Mac'te, uygulamanın sandbox klasöründe saklanır.
-> iCloud senkronu Developer ID ile imzalanmış bir dağıtım gerektirir.
+> iCloud senkronu için Mac'te iCloud'a giriş yapılmış ve **Sistem Ayarları → Apple Hesabı → iCloud**'da
+> iCloud Drive açık olmalıdır. Giriş yoksa notlar yalnızca bu Mac'te saklanır.
 
 Gereksinim: macOS 14 Sonoma veya üstü, Apple Silicon ya da Intel.
 
@@ -51,7 +51,8 @@ open Folio.xcodeproj
 ```
 
 - `./scripts/ci.sh test` — imzasız derleme ve testler (60+ Swift Testing testi).
-- `./scripts/make-dmg.sh` — Release derleme, hardened runtime ile imzalama ve `dist/` altına DMG.
+- `./scripts/make-dmg.sh` — Release DMG. Keychain'de Developer ID sertifikası varsa arşivler, iCloud'lu
+  dışa aktarır ve `folio-notary` profiliyle notarize eder; yoksa iCloud'suz ad-hoc DMG üretir.
 - `swift scripts/make-icon.swift Folio/Resources/Assets.xcassets/AppIcon.appiconset` — uygulama simgesini yeniden üretir.
 
 iCloud senkronu için kendi CloudKit container'ınızı oluşturup `Folio/Folio.entitlements` ve

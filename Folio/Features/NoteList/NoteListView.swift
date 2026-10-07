@@ -219,6 +219,7 @@ struct NoteListView: View {
     }
 }
 
+#if DEBUG
 private struct NoteListPreview: View {
     @State private var dateFilter = DateFilter.all
     @State private var selected: UUID?
@@ -244,3 +245,4 @@ private struct NoteListPreview: View {
         .modelContainer(SampleData.container())
         .preferredColorScheme(.dark)
 }
+#endif

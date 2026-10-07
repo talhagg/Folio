@@ -222,6 +222,7 @@ private struct DueLabelStyle: LabelStyle {
     }
 }
 
+#if DEBUG
 private struct EditorPreview: View {
     let container = SampleData.container()
 
@@ -237,3 +238,4 @@ private struct EditorPreview: View {
 
 #Preview("Light") { EditorPreview().preferredColorScheme(.light) }
 #Preview("Dark") { EditorPreview().preferredColorScheme(.dark) }
+#endif

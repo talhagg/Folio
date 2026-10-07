@@ -454,6 +454,7 @@ private struct OptionalDraggable: ViewModifier {
     }
 }
 
+#if DEBUG
 private struct SidebarPreview: View {
     @State private var selection: SidebarSelection? = .smart(.all)
 
@@ -474,3 +475,4 @@ private struct SidebarPreview: View {
         .modelContainer(SampleData.container())
         .preferredColorScheme(.dark)
 }
+#endif

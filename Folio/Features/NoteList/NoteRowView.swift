@@ -142,6 +142,7 @@ struct NoteRowView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     @MainActor
     struct Wrapper: View {
@@ -164,3 +165,4 @@ struct NoteRowView: View {
     }
     return Wrapper()
 }
+#endif

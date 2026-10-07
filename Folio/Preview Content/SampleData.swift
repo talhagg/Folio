@@ -1,3 +1,4 @@
+#if DEBUG
 import Foundation
 import SwiftData
 
@@ -168,3 +169,4 @@ enum SampleData {
         }
     }
 }
+#endif

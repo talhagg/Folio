@@ -1,0 +1,3 @@
+// Ortak ayarlar. Kişisel imzalama ayarları git'e girmeyen Local.xcconfig'de tutulur.
+// Kurulum: cp Config/Local.xcconfig.example Config/Local.xcconfig ve DEVELOPMENT_TEAM'i doldurun.
+#include? "Local.xcconfig"

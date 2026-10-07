@@ -27,7 +27,7 @@ echo "Mod: $MODE ${DEVELOPER_ID:+($DEVELOPER_ID)}"
 rm -rf "$DERIVED/export"
 if [[ $MODE == developer-id ]]; then
   ARCHIVE="$DERIVED/Folio.xcarchive"
-  xcodebuild archive -scheme Folio -configuration Release -destination 'generic/platform=macOS' \
+  xcodebuild archive -project Folio.xcodeproj -scheme Folio -configuration Release -destination 'generic/platform=macOS' \
     -archivePath "$ARCHIVE" -derivedDataPath "$DERIVED" -allowProvisioningUpdates \
     | grep -E "error:|warning:|\*\* " || true
 
@@ -49,7 +49,7 @@ PLIST
   APP="$DERIVED/export/Folio.app"
 else
   ENTITLEMENTS="Folio/Folio-Distribution.entitlements"
-  xcodebuild -scheme Folio -configuration Release -destination 'generic/platform=macOS' -derivedDataPath "$DERIVED" \
+  xcodebuild -project Folio.xcodeproj -scheme Folio -configuration Release -destination 'generic/platform=macOS' -derivedDataPath "$DERIVED" \
     CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= \
     CODE_SIGN_ENTITLEMENTS="$ENTITLEMENTS" build | grep -E "error:|warning:|\*\* " || true
   APP="$DERIVED/Build/Products/Release/Folio.app"

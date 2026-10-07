@@ -10,6 +10,11 @@ struct NoteCommandActions {
     var isPinned = false
     var isTrash = false
     var selectSmartFilter: @MainActor (SmartFilter) -> Void
+    var importFiles: @MainActor () -> Void
+    var importURL: @MainActor () -> Void
+    /// `nil` → seçili not yok.
+    var exportNote: (@MainActor (ExportFormat) -> Void)?
+    var exportAll: @MainActor () -> Void
 }
 
 struct NoteCommandActionsKey: FocusedValueKey {

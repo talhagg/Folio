@@ -7,6 +7,12 @@ struct SidebarView: View {
     var now: Date = .now
     /// Her artışta yeni defter oluşturulur (⇧⌘N).
     var newNotebookRequest = 0
+    /// Bölümde yeni not açar (seçimi ContentView yönetir).
+    var onNewNote: (NoteSection) -> Void = { _ in }
+    var onImportFiles: () -> Void = {}
+    var onImportURL: () -> Void = {}
+    /// Notları JSON olarak dışa aktarır (defter/bölüm adı dosya adı olur).
+    var onExport: ([Note], String) -> Void = { _, _ in }
 
     @Environment(\.modelContext) private var context
     @Query(sort: \Notebook.sortIndex) private var notebooks: [Notebook]
@@ -14,10 +20,10 @@ struct SidebarView: View {
 
     @State private var expanded: Set<UUID> = []
     @State private var didSetInitialExpansion = false
-    @State private var renameTarget: LibraryItem?
-    @State private var renameText = ""
+    @State private var namePrompt: NamePrompt?
     @State private var deleteTarget: LibraryItem?
     @State private var isHeaderHovered = false
+    @State private var hoveredRow: SidebarSelection?
     @State private var dropTarget: SidebarSelection?
     @State private var isEmptyTrashConfirmationShown = false
 
@@ -61,6 +67,7 @@ struct SidebarView: View {
             }
         }
         .background(Color.ds.sidebarBg)
+        .safeAreaInset(edge: .bottom, spacing: 0) { footer }
         .focusable()
         .focusEffectDisabled()
         .onMoveCommand(perform: moveSelection)
@@ -78,14 +85,8 @@ struct SidebarView: View {
         } message: {
             Text("\(trashCount) not kalıcı olarak silinecek. Bu işlem geri alınamaz.")
         }
-        .alert(
-            renameTarget?.renameTitle ?? "",
-            isPresented: isPresented($renameTarget),
-            presenting: renameTarget
-        ) { target in
-            TextField("Ad", text: $renameText)
-            Button("Kaydet") { target.rename(to: renameText) }
-            Button("Vazgeç", role: .cancel) {}
+        .sheet(item: $namePrompt) { prompt in
+            nameSheet(prompt)
         }
         .confirmationDialog(
             deleteTarget?.deleteTitle ?? "",
@@ -108,19 +109,61 @@ struct SidebarView: View {
                 .foregroundStyle(Color.ds.inkTertiary)
             Spacer()
             Button(action: addNotebook) {
-                Image(systemName: "plus")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color.ds.inkSecondary)
-                    .frame(width: 18, height: 18)
-                    .contentShape(Rectangle())
+                PlusIcon(size: 12, isHighlighted: isHeaderHovered)
             }
             .buttonStyle(.plain)
-            .opacity(isHeaderHovered ? 1 : 0)
-            .help(Text("Yeni defter"))
+            .onHover { isHeaderHovered = $0 }
+            .help(Text("Yeni defter (⇧⌘N)"))
             .accessibilityLabel(Text("Yeni defter"))
         }
-        .padding(.horizontal, Metrics.Spacing.s2)
-        .onHover { isHeaderHovered = $0 }
+        .padding(.leading, Metrics.Spacing.s2)
+        .padding(.trailing, Metrics.Spacing.s1)
+    }
+
+    /// Her zaman görünen "Yeni Defter" düğmesi.
+    private var footer: some View {
+        VStack(spacing: 0) {
+            Rectangle()
+                .fill(Color.ds.separator)
+                .frame(height: Metrics.Layout.separator)
+            HStack(spacing: Metrics.Spacing.s1) {
+                Button(action: addNotebook) {
+                    HStack(spacing: Metrics.Spacing.s2) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 15))
+                            .foregroundStyle(Color.ds.accent)
+                        Text("Yeni Defter")
+                            .textStyle(.body)
+                            .foregroundStyle(Color.ds.ink)
+                        Spacer()
+                    }
+                    .padding(.horizontal, Metrics.Spacing.s2)
+                    .frame(height: Metrics.Layout.rowHeight + 4)
+                    .rowBackground(isSelected: false)
+                }
+                .buttonStyle(.plain)
+                .help(Text("Yeni defter (⇧⌘N)"))
+
+                Menu {
+                    Button("Dosyadan İçe Aktar…", systemImage: "doc", action: onImportFiles)
+                    Button("URL'den İçe Aktar…", systemImage: "link", action: onImportURL)
+                } label: {
+                    Image(systemName: "square.and.arrow.down")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.ds.inkSecondary)
+                        .frame(width: 30, height: Metrics.Layout.rowHeight + 4)
+                        .rowBackground(isSelected: false)
+                }
+                .menuStyle(.button)
+                .buttonStyle(.plain)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help(Text("İçe aktar: JSON, CSV, Excel, Word, Markdown, Confluence…"))
+            }
+            .padding(.horizontal, Metrics.Spacing.s2 + 2)
+            .padding(.vertical, Metrics.Spacing.s2)
+        }
+        .background(Color.ds.sidebarBg)
     }
 
     private func row(
@@ -132,10 +175,12 @@ struct SidebarView: View {
         indent: CGFloat = 0,
         disclosure: Bool? = nil,
         onToggle: (() -> Void)? = nil,
-        dragPayload: DragPayload? = nil
+        dragPayload: DragPayload? = nil,
+        addAction: AddAction? = nil
     ) -> some View {
         let isSelected = selection == item
         let isDropTarget = dropTarget == item
+        let showsAdd = addAction != nil && hoveredRow == item
         return HStack(spacing: Metrics.Spacing.s2) {
             if let disclosure {
                 Button {
@@ -160,15 +205,29 @@ struct SidebarView: View {
                 .foregroundStyle(Color.ds.ink)
                 .lineLimit(1)
             Spacer(minLength: Metrics.Spacing.s2)
-            Text(count, format: .number)
-                .textStyle(.caption)
-                .foregroundStyle(isSelected ? Color.ds.ink.opacity(0.7) : Color.ds.inkTertiary)
-                .monospacedDigit()
+            // Hover'da sayacın yerine + düğmesi.
+            ZStack(alignment: .trailing) {
+                Text(count, format: .number)
+                    .textStyle(.caption)
+                    .foregroundStyle(isSelected ? Color.ds.ink.opacity(0.7) : Color.ds.inkTertiary)
+                    .monospacedDigit()
+                    .opacity(showsAdd ? 0 : 1)
+                if showsAdd, let addAction {
+                    addButton(addAction)
+                }
+            }
         }
         .padding(.leading, Metrics.Spacing.s2 + indent)
         .padding(.trailing, Metrics.Spacing.s2 + 2)
         .frame(height: Metrics.Layout.rowHeight)
         .rowBackground(isSelected: isSelected)
+        .onHover { hovering in
+            if hovering {
+                hoveredRow = item
+            } else if hoveredRow == item {
+                hoveredRow = nil
+            }
+        }
         .overlay {
             if isDropTarget {
                 RoundedRectangle(cornerRadius: Metrics.Radius.md, style: .continuous)
@@ -203,8 +262,11 @@ struct SidebarView: View {
             count: notebook.activeNotes.count,
             disclosure: isExpanded,
             onToggle: { toggle(notebook) },
-            dragPayload: .notebook(notebook.id)
+            dragPayload: .notebook(notebook.id),
+            addAction: .notebook(notebook)
         )
+        .accessibilityAction(named: Text("Yeni Not")) { newNote(in: notebook) }
+        .accessibilityAction(named: Text("Yeni Bölüm")) { addSection(to: notebook) }
         .contextMenu { notebookMenu(notebook) }
         .simultaneousGesture(TapGesture(count: 2).onEnded { toggle(notebook) })
     }
@@ -216,8 +278,10 @@ struct SidebarView: View {
             systemImage: "doc.text",
             count: section.activeNotes.count,
             indent: 20,
-            dragPayload: .section(section.id)
+            dragPayload: .section(section.id),
+            addAction: .section(section)
         )
+        .accessibilityAction(named: Text("Yeni Not")) { onNewNote(section) }
         .contextMenu { sectionMenu(section) }
     }
 
@@ -233,6 +297,44 @@ struct SidebarView: View {
                 .disabled(trashCount == 0)
         }
         .help(Text("Silinen notlar \(Trash.retentionDays) gün sonra kalıcı olarak silinir."))
+    }
+
+    // MARK: - Hızlı ekleme
+
+    private enum AddAction {
+        case notebook(Notebook)
+        case section(NoteSection)
+    }
+
+    /// Defterde: Yeni Not / Yeni Bölüm menüsü. Bölümde: doğrudan yeni not.
+    @ViewBuilder
+    private func addButton(_ action: AddAction) -> some View {
+        switch action {
+        case .notebook(let notebook):
+            Menu {
+                Button("Yeni Not", systemImage: "square.and.pencil") { newNote(in: notebook) }
+                Button("Yeni Bölüm", systemImage: "doc.badge.plus") { addSection(to: notebook) }
+            } label: {
+                PlusIcon(size: 11, isHighlighted: true)
+            }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help(Text("\(notebook.name) defterine ekle"))
+        case .section(let section):
+            Button { onNewNote(section) } label: {
+                PlusIcon(size: 11, isHighlighted: true)
+            }
+            .buttonStyle(.plain)
+            .help(Text("\(section.name) bölümüne yeni not"))
+        }
+    }
+
+    private func newNote(in notebook: Notebook) {
+        let section = context.sectionForNewNote(selection: .notebook(notebook.id))
+        expanded.insert(notebook.id)
+        onNewNote(section)
     }
 
     // MARK: - Sürükle-bırak
@@ -294,6 +396,8 @@ struct SidebarView: View {
                 ))
             }
         }
+        Button("Defteri Dışa Aktar (JSON)…") { onExport(notebook.activeNotes, notebook.name) }
+            .disabled(notebook.activeNotes.isEmpty)
         Divider()
         Button("Defteri Sil…", role: .destructive) { deleteTarget = .notebook(notebook) }
     }
@@ -301,6 +405,8 @@ struct SidebarView: View {
     @ViewBuilder
     private func sectionMenu(_ section: NoteSection) -> some View {
         Button("Yeniden Adlandır…") { beginRename(.section(section)) }
+        Button("Bölümü Dışa Aktar (JSON)…") { onExport(section.activeNotes, section.name) }
+            .disabled(section.activeNotes.isEmpty)
         Divider()
         Button("Bölümü Sil…", role: .destructive) { deleteTarget = .section(section) }
     }
@@ -355,24 +461,64 @@ struct SidebarView: View {
         }
     }
 
+    /// Önce ad sorulur; defter yalnızca onaylanınca oluşur.
     private func addNotebook() {
-        let notebook = context.addNotebook(name: String(localized: "Yeni Defter"))
-        let section = context.addSection(name: String(localized: "Genel"), to: notebook)
-        expanded.insert(notebook.id)
-        selection = .section(section.id)
-        beginRename(.notebook(notebook))
+        namePrompt = .newNotebook
     }
 
     private func addSection(to notebook: Notebook) {
-        let section = context.addSection(name: String(localized: "Yeni Bölüm"), to: notebook)
-        expanded.insert(notebook.id)
-        selection = .section(section.id)
-        beginRename(.section(section))
+        namePrompt = .newSection(notebook)
     }
 
     private func beginRename(_ target: LibraryItem) {
-        renameText = target.currentName
-        renameTarget = target
+        namePrompt = .rename(target)
+    }
+
+    @ViewBuilder
+    private func nameSheet(_ prompt: NamePrompt) -> some View {
+        switch prompt {
+        case .newNotebook:
+            let names = notebooks.map(\.name)
+            let palette = GroupColor.allCases
+            NameSheet(
+                kind: .notebook,
+                title: String(localized: "Yeni Defter"),
+                confirmTitle: String(localized: "Oluştur"),
+                initialName: NameValidation.uniqueName(String(localized: "Yeni Defter"), existing: names),
+                existingNames: names,
+                initialColor: palette[notebooks.count % palette.count]
+            ) { name, color in
+                let notebook = context.addNotebook(name: name, color: color)
+                let section = context.addSection(name: String(localized: "Genel"), to: notebook)
+                expanded.insert(notebook.id)
+                selection = .section(section.id)
+            }
+        case .newSection(let notebook):
+            let names = (notebook.sections ?? []).map(\.name)
+            NameSheet(
+                kind: .section,
+                title: String(localized: "\(notebook.name) defterine yeni bölüm"),
+                confirmTitle: String(localized: "Oluştur"),
+                initialName: NameValidation.uniqueName(String(localized: "Yeni Bölüm"), existing: names),
+                existingNames: names
+            ) { name, _ in
+                let section = context.addSection(name: name, to: notebook)
+                expanded.insert(notebook.id)
+                selection = .section(section.id)
+            }
+        case .rename(let target):
+            NameSheet(
+                kind: target.color == nil ? .section : .notebook,
+                title: target.renameTitle,
+                confirmTitle: String(localized: "Kaydet"),
+                initialName: target.currentName,
+                existingNames: target.siblingNames,
+                initialColor: target.color
+            ) { name, color in
+                target.rename(to: name)
+                if case .notebook(let notebook) = target, let color { notebook.color = color }
+            }
+        }
     }
 
     private func delete(_ target: LibraryItem) {
@@ -396,6 +542,20 @@ struct SidebarView: View {
     }
 }
 
+private enum NamePrompt: Identifiable {
+    case newNotebook
+    case newSection(Notebook)
+    case rename(LibraryItem)
+
+    var id: String {
+        switch self {
+        case .newNotebook: "notebook"
+        case .newSection(let notebook): "section-\(notebook.id)"
+        case .rename(let item): "rename-\(item.id)"
+        }
+    }
+}
+
 /// Yeniden adlandırma / silme hedefi.
 private enum LibraryItem {
     case notebook(Notebook)
@@ -405,6 +565,29 @@ private enum LibraryItem {
         switch self {
         case .notebook(let notebook): notebook.name
         case .section(let section): section.name
+        }
+    }
+
+    var id: UUID {
+        switch self {
+        case .notebook(let notebook): notebook.id
+        case .section(let section): section.id
+        }
+    }
+
+    var color: GroupColor? {
+        if case .notebook(let notebook) = self { return notebook.color }
+        return nil
+    }
+
+    /// Aynı düzeydeki diğer adlar (kendisi hariç).
+    var siblingNames: [String] {
+        switch self {
+        case .notebook(let notebook):
+            let all = (try? notebook.modelContext?.fetch(FetchDescriptor<Notebook>())) ?? []
+            return all.filter { $0.id != notebook.id }.map(\.name)
+        case .section(let section):
+            return (section.notebook?.sections ?? []).filter { $0.id != section.id }.map(\.name)
         }
     }
 
@@ -438,6 +621,24 @@ private enum LibraryItem {
         case .notebook(let notebook): notebook.name = trimmed
         case .section(let section): section.name = trimmed
         }
+    }
+}
+
+/// Kenar çubuğundaki + simgesi: 22 pt tıklama alanı, hover'da zemin.
+private struct PlusIcon: View {
+    var size: CGFloat
+    var isHighlighted: Bool
+
+    var body: some View {
+        Image(systemName: "plus")
+            .font(.system(size: size, weight: .semibold))
+            .foregroundStyle(isHighlighted ? Color.ds.ink : Color.ds.inkSecondary)
+            .frame(width: 22, height: 22)
+            .background(
+                Color.ds.surfaceHover.opacity(isHighlighted ? 1 : 0),
+                in: RoundedRectangle(cornerRadius: Metrics.Radius.sm + 1, style: .continuous)
+            )
+            .contentShape(Rectangle())
     }
 }
 

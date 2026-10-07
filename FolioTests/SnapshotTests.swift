@@ -27,6 +27,70 @@ struct SnapshotTests {
         try render(view, size: CGSize(width: 1140, height: 720), name: "search-light", dark: false)
     }
 
+    @Test(arguments: ["light", "dark"])
+    func editorWithTable(appearance: String) throws {
+        let view = ContentView()
+            .modelContainer(SampleData.container())
+            .frame(width: 1140, height: 1500)
+        try render(view, size: CGSize(width: 1140, height: 1500), name: "editor-table-\(appearance)", dark: appearance == "dark")
+    }
+
+    @Test(arguments: ["light", "dark"])
+    func formatBarAndLiveEditor(appearance: String) throws {
+        let controller = MarkdownEditorController()
+        let text = "## Bu hafta\n\nAuth akışı **AuthService** üzerinden, `refresh` *sonra*.\n\n- [x] Login\n- [ ] API\n1. bir\n> not\n\n| İş | Sahip |\n| --- | --- |\n| API | Talha |"
+        let view = VStack(spacing: 0) {
+            EditorFormatBar(controller: controller, currentStyle: .heading2, textSizeRaw: .constant(1), onInsertTable: {}, onDone: {})
+            MarkdownTextEditor(text: .constant(text), scale: 1, controller: controller)
+                .padding(40)
+            Spacer()
+        }
+        .frame(width: 760, height: 560)
+        .background(Color.ds.surface)
+        try render(view, size: CGSize(width: 760, height: 560), name: "format-bar-\(appearance)", dark: appearance == "dark")
+    }
+
+    @Test func tableEditorSheet() throws {
+        let view = TableEditorView(table: .empty(columns: 3, rows: 3), isNew: true) { _ in }
+            .frame(width: 920, height: 620)
+            .background(Color.ds.surface)
+        try render(view, size: CGSize(width: 920, height: 620), name: "table-editor-light", dark: false)
+    }
+
+    @Test func editingNoteDark() throws {
+        let container = SampleData.container()
+        let note = Note(title: "")
+        container.mainContext.insert(note)
+        note.body = "Bu cümlede **kalın**, *italik* ve `kod` var.\n\n- madde bir\n- madde iki\n1. birinci\n2. ikinci"
+        let view = NavigationStack { NoteEditorView(note: note, startsEditingBody: true) }
+            .modelContainer(container)
+        // Kaydırma alanlı editör, tam boyutlu içerik penceresinde boş çiziliyor; düz pencere kullanılır.
+        let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 800, height: 600), styleMask: [.titled], backing: .buffered, defer: false)
+        window.appearance = NSAppearance(named: .darkAqua)
+        let hosting = NSHostingView(rootView: view)
+        window.contentView = hosting
+        window.makeKeyAndOrderFront(nil)
+        defer { window.orderOut(nil) }
+        for _ in 0..<10 { RunLoop.main.run(until: Date().addingTimeInterval(0.1)); hosting.layoutSubtreeIfNeeded() }
+        let rep = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
+        hosting.cacheDisplay(in: hosting.bounds, to: rep)
+        try #require(rep.representation(using: .png, properties: [:])).write(to: directory.appending(path: "editing-dark.png"))
+    }
+
+    @Test func nameSheetWithDuplicate() throws {
+        let view = NameSheet(
+            kind: .notebook, title: "Yeni Defter", confirmTitle: "Oluştur", initialName: "iş",
+            existingNames: ["İş", "Kişisel"], initialColor: .slate
+        ) { _, _ in }
+        .background(Color.ds.surfaceRaised)
+        try render(view, size: CGSize(width: 340, height: 220), name: "name-sheet-light", dark: false)
+    }
+
+    @Test func themePicker() throws {
+        let view = ThemePicker().padding(16).frame(width: 300).background(Color.ds.surfaceRaised)
+        try render(view, size: CGSize(width: 300, height: 200), name: "theme-picker-light", dark: false)
+    }
+
     @Test func trash() throws {
         let container = SampleData.container()
         let view = ContentView(selection: .trash)

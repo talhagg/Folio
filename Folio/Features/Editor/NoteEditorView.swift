@@ -6,12 +6,35 @@ struct NoteEditorView: View {
     @Bindable var note: Note
     var now: Date = .now
     var onDeletePermanently: (() -> Void)? = nil
+    var onExport: ((ExportFormat) -> Void)? = nil
+    /// Testler için: gövde düzenleme modunda açılır.
+    var startsEditingBody = false
 
     @Environment(\.modelContext) private var context
     @FocusState private var focus: Field?
     @State private var isDuePopoverShown = false
+    /// Gövde ham markdown olarak mı düzenleniyor; değilse biçimlendirilmiş gösterilir.
+    @State private var isEditingBody = false
+    @State private var tableSheet: TableSheet?
+    @State private var editorController = MarkdownEditorController()
+    @State private var currentLineStyle: MarkdownLineStyle = .body
+    @AppStorage(EditorTextSize.storageKey) private var textSizeRaw = EditorTextSize.normal.rawValue
 
-    private enum Field: Hashable { case title, body }
+    private enum Field: Hashable { case title }
+
+    private enum TableSheet: Identifiable {
+        case new
+        case edit(ParsedBlock)
+
+        var id: String {
+            switch self {
+            case .new: "new"
+            case .edit(let block): "edit-\(block.lines.lowerBound)"
+            }
+        }
+    }
+
+    private var scale: CGFloat { (EditorTextSize(rawValue: textSizeRaw) ?? .normal).scale }
 
     var body: some View {
         ScrollView {
@@ -27,10 +50,10 @@ struct NoteEditorView: View {
 
                 TextField("Başlıksız not", text: editedBinding(\.title, field: .title), axis: .vertical)
                     .textFieldStyle(.plain)
-                    .textStyle(.noteTitle)
+                    .textStyle(.noteTitle, scale: scale)
                     .foregroundStyle(Color.ds.ink)
                     .focused($focus, equals: .title)
-                    .onSubmit { focus = .body }
+                    .onSubmit(beginEditingBody)
                     .padding(.bottom, Metrics.Spacing.s6)
 
                 if note.taskCount > 0 || note.isBlocked {
@@ -39,7 +62,7 @@ struct NoteEditorView: View {
                 }
 
                 Text("Görevler")
-                    .textStyle(.noteHeading)
+                    .textStyle(.noteHeading, scale: scale)
                     .foregroundStyle(Color.ds.ink)
                     .padding(.bottom, Metrics.Spacing.s2)
 
@@ -47,7 +70,7 @@ struct NoteEditorView: View {
                     .padding(.leading, -18)
                     .padding(.bottom, Metrics.Spacing.s6)
 
-                bodyEditor
+                bodySection
                 }
                 // Çöpteki not salt okunurdur; düzenlemek için geri yüklenir.
                 .disabled(note.isTrashed)
@@ -61,11 +84,52 @@ struct NoteEditorView: View {
         }
         .scrollIndicators(.automatic)
         .background(Color.ds.surface)
+        .environment(\.editorTextScale, scale)
         .onAppear {
-            if note.title.isEmpty && !note.isTrashed { focus = .title }
+            if startsEditingBody { isEditingBody = true }
+            if note.title.isEmpty && !note.isTrashed && !startsEditingBody { focus = .title }
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if isEditingBody {
+                EditorFormatBar(
+                    controller: editorController,
+                    currentStyle: currentLineStyle,
+                    textSizeRaw: $textSizeRaw,
+                    onInsertTable: { tableSheet = .new },
+                    onDone: endEditingBody
+                )
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.snappy(duration: 0.2), value: isEditingBody)
+        .sheet(item: $tableSheet) { sheet in
+            tableEditor(sheet)
         }
         .toolbar {
+            if let onExport {
+                ToolbarItem {
+                    Menu {
+                        ForEach(ExportFormat.allCases) { format in
+                            Button { onExport(format) } label: {
+                                Label("\(format.title) olarak…", systemImage: format.symbolName)
+                            }
+                        }
+                    } label: {
+                        Label("Dışa Aktar", systemImage: "square.and.arrow.up")
+                    }
+                    .help(Text("Notu dışa aktar: PDF, Word, Markdown, JSON"))
+                }
+            }
             if !note.isTrashed {
+            ToolbarItem {
+                Button {
+                    tableSheet = .new
+                } label: {
+                    Label("Tablo Ekle", systemImage: "tablecells.badge.ellipsis")
+                }
+                .help(Text("Tablo ekle (⌥⌘T)"))
+                .keyboardShortcut("t", modifiers: [.command, .option])
+            }
             ToolbarItem {
                 Button {
                     note.isPinned.toggle()
@@ -181,35 +245,79 @@ struct NoteEditorView: View {
         }
     }
 
+    // MARK: - Tablolar
+
+    @ViewBuilder
+    private func tableEditor(_ sheet: TableSheet) -> some View {
+        switch sheet {
+        case .new:
+            TableEditorView(table: .empty(columns: 3, rows: 3), isNew: true) { table in
+                if isEditingBody {
+                    // Yazarken imlecin olduğu yere.
+                    editorController.insertBlock(table.markdown)
+                    note.touch()
+                } else {
+                    setBody(MarkdownDocument.appendingBlock(table.markdown, to: note.body))
+                }
+            }
+        case .edit(let parsed):
+            if case .table(let table) = parsed.block {
+                TableEditorView(table: table, isNew: false) { table in
+                    setBody(MarkdownDocument.replacingLines(parsed.lines, in: note.body, with: table.markdown))
+                } onDelete: {
+                    setBody(MarkdownDocument.replacingLines(parsed.lines, in: note.body, with: ""))
+                }
+            }
+        }
+    }
+
+    private func setBody(_ body: String) {
+        note.body = body
+        note.touch()
+    }
+
     // MARK: - Gövde
 
-    /// TextEditor içeriğe göre büyüsün diye görünmez bir `Text` yüksekliği belirler.
-    private var bodyEditor: some View {
-        ZStack(alignment: .topLeading) {
-            Text(note.body.isEmpty ? " " : note.body + "\n")
-                .textStyle(.noteBody)
-                .padding(.horizontal, 5)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .opacity(0)
-                .accessibilityHidden(true)
-
-            if note.body.isEmpty {
-                Text("Yazmaya başlayın…")
-                    .textStyle(.noteBody)
-                    .foregroundStyle(Color.ds.inkTertiary)
-                    .padding(.horizontal, 5)
-                    .allowsHitTesting(false)
-            }
-
-            TextEditor(text: editedBinding(\.body, field: .body))
-                .textStyle(.noteBody)
-                .foregroundStyle(Color.ds.ink)
-                .scrollContentBackground(.hidden)
-                .scrollDisabled(true)
-                .focused($focus, equals: .body)
+    @ViewBuilder
+    private var bodySection: some View {
+        if isEditingBody {
+            MarkdownTextEditor(
+                text: bodyBinding,
+                scale: scale,
+                controller: editorController,
+                onStyleChange: { currentLineStyle = $0 },
+                onEndEditing: { isEditingBody = false }
+            )
+            .frame(minHeight: 120, alignment: .topLeading)
+        } else {
+            MarkdownBodyView(
+                text: note.body,
+                onEditText: beginEditingBody,
+                onEditTable: { tableSheet = .edit($0) }
+            )
+            .frame(minHeight: 120, alignment: .topLeading)
         }
-        .padding(.horizontal, -5)
-        .frame(minHeight: 120, alignment: .topLeading)
+    }
+
+    /// Yazarken yapılan değişiklikler notu düzenlenmiş sayar.
+    private var bodyBinding: Binding<String> {
+        Binding {
+            note.body
+        } set: { newValue in
+            guard newValue != note.body else { return }
+            note.body = newValue
+            if editorController.isFocused { note.touch() }
+        }
+    }
+
+    private func beginEditingBody() {
+        guard !note.isTrashed else { return }
+        isEditingBody = true
+        Task { @MainActor in editorController.focus() }
+    }
+
+    private func endEditingBody() {
+        isEditingBody = false
     }
 }
 

@@ -90,6 +90,7 @@ private struct TaskRow: View {
 
     @State private var isHovered = false
     @State private var isDatePopoverShown = false
+    @Environment(\.editorTextScale) private var scale
 
     private var isOverdue: Bool {
         guard let dueDate = task.dueDate else { return false }
@@ -120,7 +121,7 @@ private struct TaskRow: View {
                 if task.isDone && focusedTaskID.wrappedValue != task.id {
                     // TextField üstü çizmeyi göstermediği için tamamlanan görev düzenlenene kadar Text olarak çizilir.
                     Text(task.text)
-                        .font(Font.ds.noteBody)
+                        .font(DSTextStyle.noteBody.font(scale: scale))
                         .strikethrough(color: Color.ds.inkTertiary)
                         .foregroundStyle(Color.ds.inkTertiary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -158,7 +159,7 @@ private struct TaskRow: View {
     private var taskField: some View {
         TextField("Görev", text: $task.text, axis: .vertical)
             .textFieldStyle(.plain)
-            .font(Font.ds.noteBody)
+            .font(DSTextStyle.noteBody.font(scale: scale))
             .foregroundStyle(task.isDone ? Color.ds.inkTertiary : Color.ds.ink)
             .focused(focusedTaskID, equals: task.id)
             .onSubmit(onSubmit)

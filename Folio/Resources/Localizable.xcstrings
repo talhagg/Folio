@@ -1,19 +1,412 @@
 {
   "sourceLanguage" : "tr",
   "strings" : {
-    "%@ filtresini kaldır" : {},
-    "Arduvaz" : {},
-    "Başlanmadı" : {},
-    "Bloke" : {},
-    "Defter: %@" : {},
-    "Deniz" : {},
-    "Devam ediyor" : {},
-    "Erik" : {},
-    "İlerleme" : {},
-    "Kehribar" : {},
-    "Kil" : {},
-    "Tamamlandı" : {},
-    "Yosun" : {}
+    "“%@” · Son Silinenler'de" : {
+
+    },
+    "“%@” · tüm notlarda" : {
+
+    },
+    "“%@” bölümü silinsin mi?" : {
+
+    },
+    "“%@” defteri silinsin mi?" : {
+
+    },
+    "“%@” kalıcı olarak silinsin mi?" : {
+
+    },
+    "“%@” Son Silinenler'e taşınsın mı?" : {
+
+    },
+    "%@ · tüm notlar" : {
+
+    },
+    "%@ filtresini kaldır" : {
+
+    },
+    "%@, %@" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@"
+          }
+        }
+      }
+    },
+    "%lld gün kaldı" : {
+
+    },
+    "%lld gün sonra kalıcı olarak silinecek." : {
+
+    },
+    "%lld not" : {
+
+    },
+    "%lld not kalıcı olarak silinecek. Bu işlem geri alınamaz." : {
+
+    },
+    "%lld sonuç" : {
+
+    },
+    "%lld/%lld görev · %@" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld/%2$lld görev · %3$@"
+          }
+        }
+      }
+    },
+    "Ad" : {
+
+    },
+    "Arama" : {
+
+    },
+    "Arduvaz" : {
+
+    },
+    "Başka bir kelimeyle aramayı deneyin." : {
+
+    },
+    "Başlangıç" : {
+
+    },
+    "Başlanmadı" : {
+
+    },
+    "Başlıksız not" : {
+
+    },
+    "Bir not seçin" : {
+
+    },
+    "Bitiş" : {
+
+    },
+    "Bloke" : {
+
+    },
+    "Bloke Olarak İşaretle" : {
+
+    },
+    "Blokeyi Kaldır" : {
+
+    },
+    "Bölümü Sil…" : {
+
+    },
+    "Bölümü Yeniden Adlandır" : {
+
+    },
+    "Boşalt" : {
+
+    },
+    "Bu ay" : {
+
+    },
+    "Bu Ay" : {
+
+    },
+    "Bu görünümde not yok" : {
+
+    },
+    "Bu hafta" : {
+
+    },
+    "Bu Hafta" : {
+
+    },
+    "Bu işlem geri alınamaz." : {
+
+    },
+    "Bu not Son Silinenler'de" : {
+
+    },
+    "Bugün" : {
+
+    },
+    "bugün %@" : {
+
+    },
+    "Bugün kalıcı olarak silinecek." : {
+
+    },
+    "Bugün silinecek" : {
+
+    },
+    "Daha eski" : {
+
+    },
+    "Daralt" : {
+
+    },
+    "Defter: %@" : {
+
+    },
+    "Defteri Sil…" : {
+
+    },
+    "Defteri Yeniden Adlandır" : {
+
+    },
+    "Defterler" : {
+
+    },
+    "Deniz" : {
+
+    },
+    "Devam Edenler" : {
+
+    },
+    "Devam ediyor" : {
+
+    },
+    "Dün" : {
+
+    },
+    "dün %@" : {
+
+    },
+    "Durumu değiştir" : {
+
+    },
+    "Erik" : {
+
+    },
+    "Gecikti, %@" : {
+
+    },
+    "Genel" : {
+
+    },
+    "Genişlet" : {
+
+    },
+    "Geri Yükle" : {
+
+    },
+    "Geri Yükle: Bölüm Seç" : {
+
+    },
+    "Görev" : {
+
+    },
+    "Görev ekle" : {
+
+    },
+    "Görevi Sil" : {
+
+    },
+    "Görevler" : {
+
+    },
+    "Hedef ekle" : {
+
+    },
+    "Hedef tarih" : {
+
+    },
+    "Hedef tarih ekle" : {
+
+    },
+    "Hedef tarih…" : {
+
+    },
+    "Hedef tarihi kaldır" : {
+
+    },
+    "Hedef: %@" : {
+
+    },
+    "İçindeki %lld not Son Silinenler'e taşınacak; %lld gün içinde geri yükleyebilirsiniz." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "İçindeki %1$lld not Son Silinenler'e taşınacak; %2$lld gün içinde geri yükleyebilirsiniz."
+          }
+        }
+      }
+    },
+    "İlerleme" : {
+
+    },
+    "Kaldır" : {
+
+    },
+    "Kalıcı Olarak Sil" : {
+
+    },
+    "Kalıcı Olarak Sil…" : {
+
+    },
+    "Kalıcı Sil" : {
+
+    },
+    "Kalıcı Sil…" : {
+
+    },
+    "Kaydet" : {
+
+    },
+    "Kehribar" : {
+
+    },
+    "Kil" : {
+
+    },
+    "Not" : {
+
+    },
+    "Not %lld gün boyunca Son Silinenler'de kalır, sonra kalıcı olarak silinir." : {
+
+    },
+    "Notlar silindikten %lld gün sonra kalıcı olarak silinir." : {
+
+    },
+    "Notlarda ara" : {
+
+    },
+    "Notlarda Ara" : {
+
+    },
+    "Notlarım" : {
+
+    },
+    "Oluşturuldu %@ · Düzenlendi %@" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Oluşturuldu %1$@ · Düzenlendi %2$@"
+          }
+        }
+      }
+    },
+    "Özel" : {
+
+    },
+    "Özel aralık" : {
+
+    },
+    "Renk" : {
+
+    },
+    "Sabitle" : {
+
+    },
+    "Sabitlemeyi kaldır" : {
+
+    },
+    "Sabitlemeyi Kaldır" : {
+
+    },
+    "Sabitlenenler" : {
+
+    },
+    "Sabitlenmiş" : {
+
+    },
+    "Sil" : {
+
+    },
+    "Silinen not seçilmedi" : {
+
+    },
+    "Silinen notlar %lld gün burada kalır." : {
+
+    },
+    "Silinen notlar %lld gün sonra kalıcı olarak silinir." : {
+
+    },
+    "Son Silinenler" : {
+
+    },
+    "Son Silinenler boş" : {
+
+    },
+    "Son Silinenler boşaltılsın mı?" : {
+
+    },
+    "Son Silinenlere Taşı" : {
+
+    },
+    "Son Silinenlere Taşı…" : {
+
+    },
+    "Son Silinenleri Boşalt…" : {
+
+    },
+    "Sonuç bulunamadı" : {
+
+    },
+    "Tamamlandı" : {
+
+    },
+    "Tamamlandı olarak işaretle" : {
+
+    },
+    "Tamamlanmadı" : {
+
+    },
+    "Tamamlanmadı olarak işaretle" : {
+
+    },
+    "Tarih filtresini kaldırmayı deneyin." : {
+
+    },
+    "Taşı" : {
+
+    },
+    "Tüm Notlar" : {
+
+    },
+    "Tüm tarihler" : {
+
+    },
+    "Tümü" : {
+
+    },
+    "Uygula" : {
+
+    },
+    "Vazgeç" : {
+
+    },
+    "ya da ⌘N ile yenisini oluşturun" : {
+
+    },
+    "Yazmaya başlayın…" : {
+
+    },
+    "Yeni bir not oluşturmak için ⌘N." : {
+
+    },
+    "Yeni Bölüm" : {
+
+    },
+    "Yeni defter" : {
+
+    },
+    "Yeni Defter" : {
+
+    },
+    "Yeni Not" : {
+
+    },
+    "Yeni not oluştur (⌘N)" : {
+
+    },
+    "Yeniden Adlandır…" : {
+
+    },
+    "Yosun" : {
+
+    }
   },
   "version" : "1.0"
 }

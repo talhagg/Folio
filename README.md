@@ -16,10 +16,27 @@
 - **Global arama (⌘F):** başlık, gövde ve görevlerde; eşleşmeler vurgulanır. Türkçe i/ı duyarsız.
 - **Son Silinenler:** silinen notlar 90 gün saklanır, sonra otomatik silinir; geri yüklenebilir.
 - **Sürükle-bırak:** notları bölümler arasında ya da çöpe taşıma.
+- **Tablolar ve biçimli metin:** not gövdesi markdown; başlıklar, listeler, kod ve tablolar biçimli görünür. Tablo düzenleyici ile satır/sütun ekleyin (⌥⌘T).
+- **Yazarken biçimlendirme:** üstte biçim çubuğu — paragraf stili, kalın/italik/kod, listeler, tablo ve yazı boyutu (13–22 pt, ⌘+ / ⌘- / ⌘0).
+- **İçe aktarma:** JSON, CSV, Excel (.xlsx), Word (.docx), Markdown, TXT, HTML dosyaları (⇧⌘I ya da listeye sürükleyin)
+  ve URL'ler (⇧⌘U) — Confluence sayfaları alt sayfalarıyla birlikte. Notlar **İçe Aktarılanlar** defterinde, kaynak başına bir bölümde toplanır.
+  Tabloda *başlık/title* sütunu varsa her satır ayrı not olur.
+- **Dışa aktarma:** notu PDF, Word (.docx — gerçek tablolar ve başlık stilleriyle), Markdown ya da JSON olarak kaydedin
+  (⇧⌘E PDF). Defter, bölüm ya da tüm notlar JSON yedeği olarak alınabilir ve görevleriyle geri yüklenir.
 - **Kaydırarak silme:** trackpad'de notu sola kaydırınca Sil düğmesi açılır; uzun kaydırma doğrudan siler (onaylı).
 - **iCloud senkronu:** notlar aynı Apple hesabındaki Mac'ler arasında senkronlanır.
-- Açık/koyu tema, klavyeyle gezinme, pencere ve sütun genişliklerini hatırlama.
+- **Tema:** toolbar'daki palet düğmesinden Sistem/Açık/Koyu görünüm ve 6 vurgu rengi.
+- Klavyeyle gezinme, pencere ve sütun genişliklerini hatırlama.
 - Üçüncü parti bağımlılık yok: Swift 6, SwiftUI, SwiftData.
+
+### Confluence
+
+Ayarlar (⌘,) → **İçe Aktarma**'ya sitenizi ve token'ınızı girin:
+
+- **Cloud** (`*.atlassian.net`): e-posta + [API token](https://id.atlassian.com/manage-profile/security/api-tokens).
+- **Server / Data Center:** e-postayı boş bırakıp kişisel erişim token'ı (PAT) girin.
+
+Token Keychain'de saklanır ve yalnızca girilen siteye giden isteklere eklenir. Herkese açık sayfalar token gerektirmez.
 
 ## Kurulum (DMG)
 
@@ -31,7 +48,7 @@ Folio, Developer ID ile imzalı ve Apple tarafından notarize edilmiştir; ek bi
 İndirilen dosyanın bütünlüğünü sürüm notlarındaki SHA-256 ile doğrulayabilirsiniz:
 
 ```bash
-shasum -a 256 Folio-0.2.dmg
+shasum -a 256 Folio-0.3.dmg
 ```
 
 > iCloud senkronu için Mac'te iCloud'a giriş yapılmış ve **Sistem Ayarları → Apple Hesabı → iCloud**'da

@@ -36,7 +36,7 @@ enum SampleData {
                 ("Sprint 42", [
                     NoteSpec(
                         title: "Sprint 42 planlaması",
-                        body: "Login ekranı tasarımı bitti, API bağlantısı ve hata durumları kaldı.\n\nAuth akışı `AuthService` üzerinden ilerliyor. Token yenileme için interceptor eklenecek; refresh başarısız olursa kullanıcı login ekranına düşmeli.",
+                        body: "Login ekranı tasarımı bitti, API bağlantısı ve hata durumları kaldı.\n\nAuth akışı `AuthService` üzerinden ilerliyor. Token yenileme için interceptor eklenecek; refresh başarısız olursa kullanıcı login ekranına düşmeli.\n\n## Sorumlular\n\n| İş | Sahip | Durum |\n| --- | --- | --- |\n| API bağlantısı | Talha | Devam ediyor |\n| Hata ekranları | Ayşe | Bekliyor |\n| Erişilebilirlik | Can | Planlandı |",
                         hoursAgo: 0.5, dueInDays: 3, pinned: true,
                         tasks: [
                             ("Login ekranı tasarımı", true), ("Form doğrulama ve hata mesajları", true),

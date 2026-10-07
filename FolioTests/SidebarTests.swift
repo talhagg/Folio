@@ -106,3 +106,19 @@ struct SelectionPersistenceTests {
         #expect(selection.includes(note, now: .now))
     }
 }
+
+struct NameValidationTests {
+    @Test func rejectsEmptyAndDuplicateNamesCaseInsensitively() {
+        let existing = ["İş", "Kişisel", "Yeni Defter"]
+        #expect(NameValidation.issue(for: "   ", existing: existing) == .empty)
+        #expect(NameValidation.issue(for: "iş", existing: existing) == .duplicate)
+        #expect(NameValidation.issue(for: "KİŞİSEL ", existing: existing) == .duplicate)
+        #expect(NameValidation.issue(for: "Okul", existing: existing) == nil)
+    }
+
+    @Test func uniqueNameAppendsNextFreeNumber() {
+        #expect(NameValidation.uniqueName("Yeni Defter", existing: []) == "Yeni Defter")
+        #expect(NameValidation.uniqueName("Yeni Defter", existing: ["Yeni Defter"]) == "Yeni Defter 2")
+        #expect(NameValidation.uniqueName("Yeni Defter", existing: ["Yeni Defter", "yeni defter 2"]) == "Yeni Defter 3")
+    }
+}

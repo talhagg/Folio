@@ -13,14 +13,24 @@ struct DateFilterBar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Metrics.Spacing.s2 + 2) {
-            SegmentedControl(
-                items: DateFilter.Kind.allCases.map {
-                    .init(value: $0, title: $0.title, systemImage: $0 == .custom ? "calendar" : nil)
-                },
-                selection: kindBinding
-            )
-            .popover(isPresented: $isCustomPopoverShown, arrowEdge: .bottom) {
-                customRangePopover
+            HStack(spacing: Metrics.Spacing.s1) {
+                FilterPills(
+                    items: [DateFilter.Kind.all, .today, .week, .month].map { .init(value: $0, title: $0.title) },
+                    selection: kindBinding
+                )
+                Spacer(minLength: Metrics.Spacing.s1)
+                // Özel aralık: seçiliyken aralığın kendisini gösterir.
+                PillButton(
+                    title: dateFilter.kind == .custom ? dateFilter.summaryTitle : DateFilter.Kind.custom.title,
+                    systemImage: "calendar",
+                    isSelected: dateFilter.kind == .custom
+                ) {
+                    kindBinding.wrappedValue = .custom
+                }
+                .help(Text("Özel tarih aralığı"))
+                .popover(isPresented: $isCustomPopoverShown, arrowEdge: .bottom) {
+                    customRangePopover
+                }
             }
 
             HStack(spacing: Metrics.Spacing.s2) {

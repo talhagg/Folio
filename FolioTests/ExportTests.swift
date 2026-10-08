@@ -21,6 +21,13 @@ struct ExportTests {
         #expect(export.app == "Folio")
         #expect(export.notes.first?.tasks.count == 8)
         #expect(export.notes.first?.notebook == "İş")
+        let table = try #require(export.notes.first?.tables?.first)
+        #expect(table.header == ["İş", "Sahip", "Durum"])
+        #expect(table.rows.first == ["API bağlantısı", "Talha", "Devam ediyor"])
+        // JSON metninde tablo okunur halde de görünmeli.
+        let json = String(decoding: data, as: UTF8.self)
+        #expect(json.contains("\"tables\""))
+        #expect(json.contains("\"header\""))
 
         let documents = try FileImporter.documents(from: data, fileName: "yedek.json")
         #expect(documents.count == 1)
@@ -33,6 +40,23 @@ struct ExportTests {
         let restored = try #require(section.activeNotes.first)
         #expect(restored.progress == note.progress)
         #expect(restored.body == note.body)
+    }
+
+    @Test func jsonTablesWithoutBodyTableAreImported() throws {
+        let json = #"""
+        {"app":"Folio","version":1,"exportedAt":"2026-10-08T10:00:00Z","notes":[
+          {"title":"Fiyatlar","body":"Liste:","createdAt":"2026-10-08T10:00:00Z","updatedAt":"2026-10-08T10:00:00Z",
+           "isPinned":false,"status":"todo","tasks":[],
+           "tables":[{"header":["Ürün","Fiyat"],"rows":[["Kalem","5"],["Defter","12"]]}]}]}
+        """#
+        let documents = try FileImporter.documents(from: Data(json.utf8), fileName: "x.json")
+        let blocks = MarkdownDocument.parse(try #require(documents.first).markdown).map(\.block)
+        #expect(blocks.contains(.table(MarkdownTable(header: ["Ürün", "Fiyat"], rows: [["Kalem", "5"], ["Defter", "12"]]))))
+        // Gövdede zaten olan tablo iki kez eklenmemeli.
+        let note = try sprintNote()
+        let roundTrip = try FileImporter.documents(from: try NoteExporter.data(for: [note], format: .json), fileName: "y.json")
+        let tableCount = MarkdownDocument.parse(try #require(roundTrip.first).markdown).filter { if case .table = $0.block { true } else { false } }.count
+        #expect(tableCount == 1)
     }
 
     @Test func markdownHasTitleTasksAndBody() throws {

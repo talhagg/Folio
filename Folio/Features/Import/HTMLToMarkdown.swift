@@ -100,6 +100,10 @@ enum HTMLToMarkdown {
 
     /// Blok öğe ise markdown blokları; satır içi öğe ise `nil`.
     private static func block(_ element: XMLElement, name: String) -> [String]? {
+        // role="table"/"grid": <table> kullanmadan çizilen tablolar (Confluence Cloud, modern siteler).
+        if let role = element.attribute(named: "role")?.lowercased(), ["table", "grid", "treegrid"].contains(role) {
+            return ariaTable(element).map { [$0.markdown] } ?? []
+        }
         switch name {
         case "h1", "h2", "h3", "h4", "h5", "h6":
             let level = Int(name.dropFirst()) ?? 1
@@ -185,13 +189,60 @@ enum HTMLToMarkdown {
         let cells = rows.map { row in
             row.childElements
                 .filter { ["td", "th"].contains($0.localName ?? "") }
-                .map { cell in render(cell).replacingOccurrences(of: "\n\n", with: " ").replacingOccurrences(of: "\n", with: " ") }
+                .flatMap { cell -> [String] in
+                    let text = cellText(cell)
+                    // Birleştirilmiş hücre: sütunlar kaymasın diye boş hücrelerle doldur.
+                    let span = max(1, min(Int(cell.attribute(named: "colspan") ?? "") ?? 1, 20))
+                    return [text] + Array(repeating: "", count: span - 1)
+                }
         }
         let firstIsHeader = rows[0].childElements.contains { $0.localName == "th" }
         if firstIsHeader || cells.count > 1 {
             return MarkdownTable(header: cells[0], rows: Array(cells.dropFirst())).normalized
         }
         return MarkdownTable(header: cells[0].indices.map { String(localized: "Sütun \($0 + 1)") }, rows: cells).normalized
+    }
+
+    private static func cellText(_ cell: XMLElement) -> String {
+        render(cell)
+            .replacingOccurrences(of: #"\n+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespaces)
+    }
+
+    private static let ariaCellRoles: Set<String> = ["cell", "gridcell", "columnheader", "rowheader"]
+
+    private static func ariaTable(_ element: XMLElement) -> MarkdownTable? {
+        func role(_ node: XMLElement) -> String { node.attribute(named: "role")?.lowercased() ?? "" }
+        func nearest(_ node: XMLElement, roles: Set<String>) -> XMLElement? {
+            var current = node.parent as? XMLElement
+            while let candidate = current {
+                if roles.contains(role(candidate)) { return candidate }
+                current = candidate.parent as? XMLElement
+            }
+            return nil
+        }
+        let tableRoles: Set<String> = ["table", "grid", "treegrid"]
+        let rows = allDescendants(element).filter { role($0) == "row" && nearest($0, roles: tableRoles) === element }
+        guard !rows.isEmpty else { return nil }
+        var headerRow: [String]?
+        var bodyRows: [[String]] = []
+        for row in rows {
+            let cells = allDescendants(row).filter { ariaCellRoles.contains(role($0)) && nearest($0, roles: ["row"]) === row }
+            guard !cells.isEmpty else { continue }
+            let texts = cells.map(cellText)
+            if headerRow == nil, bodyRows.isEmpty, cells.allSatisfy({ role($0) == "columnheader" }) {
+                headerRow = texts
+            } else {
+                bodyRows.append(texts)
+            }
+        }
+        guard headerRow != nil || !bodyRows.isEmpty else { return nil }
+        if let headerRow { return MarkdownTable(header: headerRow, rows: bodyRows).normalized }
+        return MarkdownTable(header: bodyRows[0], rows: Array(bodyRows.dropFirst())).normalized
+    }
+
+    private static func allDescendants(_ element: XMLElement) -> [XMLElement] {
+        element.childElements.flatMap { [$0] + allDescendants($0) }
     }
 
     private static func inlineText(_ element: XMLElement) -> String {

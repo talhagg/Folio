@@ -48,7 +48,7 @@ Folio, Developer ID ile imzalı ve Apple tarafından notarize edilmiştir; ek bi
 İndirilen dosyanın bütünlüğünü sürüm notlarındaki SHA-256 ile doğrulayabilirsiniz:
 
 ```bash
-shasum -a 256 Folio-0.3.1.dmg
+shasum -a 256 Folio-0.3.2.dmg
 ```
 
 > iCloud senkronu için Mac'te iCloud'a giriş yapılmış ve **Sistem Ayarları → Apple Hesabı → iCloud**'da

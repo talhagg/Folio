@@ -71,9 +71,16 @@ struct FolioExport: Codable, Equatable {
         var dueDate: Date?
     }
 
+    struct ExportedTable: Codable, Equatable {
+        var header: [String]
+        var rows: [[String]]
+    }
+
     struct ExportedNote: Codable, Equatable {
         var title: String
         var body: String
+        /// Gövdedeki tablolar ayrıca yapılandırılmış halde (gövdede de markdown olarak bulunur).
+        var tables: [ExportedTable]?
         var notebook: String?
         var section: String?
         var createdAt: Date
@@ -129,6 +136,11 @@ enum NoteExporter {
             FolioExport.ExportedNote(
                 title: note.title,
                 body: note.body,
+                tables: MarkdownDocument.parse(note.body).compactMap { parsed -> FolioExport.ExportedTable? in
+                    guard case .table(let table) = parsed.block else { return nil }
+                    let normalized = table.normalized
+                    return FolioExport.ExportedTable(header: normalized.header, rows: normalized.rows)
+                },
                 notebook: note.notebook?.name,
                 section: note.section?.name,
                 createdAt: note.createdAt,

@@ -9,9 +9,20 @@ enum JSONImporter {
         // Folio'nun kendi yedeği: görevler, sabitleme ve hedef tarihleriyle geri yüklenir.
         if let export = try? FolioExport.decoder.decode(FolioExport.self, from: data), export.app == FolioExport.appName {
             return export.notes.map { note in
-                ImportedDocument(
+                // Gövdede bulunmayan tablolar (ör. başka bir programın ürettiği JSON) gövdeye eklenir.
+                let existing = MarkdownDocument.parse(note.body).compactMap { parsed -> MarkdownTable? in
+                    if case .table(let table) = parsed.block { table.normalized } else { nil }
+                }
+                var body = note.body
+                for table in note.tables ?? [] {
+                    let markdownTable = MarkdownTable(header: table.header, rows: table.rows).normalized
+                    if !existing.contains(markdownTable) {
+                        body = MarkdownDocument.appendingBlock(markdownTable.markdown, to: body)
+                    }
+                }
+                return ImportedDocument(
                     title: note.title,
-                    markdown: note.body,
+                    markdown: body,
                     createdAt: note.createdAt,
                     tasks: note.tasks.map { ImportedTask(text: $0.text, isDone: $0.isDone, dueDate: $0.dueDate) },
                     isPinned: note.isPinned,

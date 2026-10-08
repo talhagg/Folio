@@ -1,3 +1,4 @@
+import AppKit
 import Compression
 import Foundation
 import SwiftData
@@ -306,5 +307,71 @@ struct WebPageTitleTests {
         #expect(WebPage.cleanTitle("Sprint Plan - Mühendislik - Confluence") == "Sprint Plan")
         #expect(WebPage.cleanTitle("Örnek Sayfa") == "Örnek Sayfa")
         #expect(WebPage.cleanTitle("  ") == nil)
+    }
+}
+
+struct TableImportTests {
+    private func tables(_ markdown: String) -> [MarkdownTable] {
+        MarkdownDocument.parse(markdown).compactMap { if case .table(let table) = $0.block { table } else { nil } }
+    }
+
+    @Test func importsRoleBasedTables() {
+        let html = """
+        <html><body><h2>Ekip</h2>
+        <div role="table">
+          <div role="row"><div role="columnheader">Ad</div><div role="columnheader"><span>Rol</span><button>↕</button></div></div>
+          <div role="row"><div role="cell"><p>Ali</p></div><div role="cell">Lider</div></div>
+          <div role="row"><div role="cell">Ayşe</div><div role="cell">Tasarım</div></div>
+        </div></body></html>
+        """
+        let result = tables(HTMLToMarkdown.convert(html: html).markdown)
+        // Hücredeki sıralama düğmesi tabloya karışmamalı.
+        #expect(result == [MarkdownTable(header: ["Ad", "Rol"], rows: [["Ali", "Lider"], ["Ayşe", "Tasarım"]])])
+    }
+
+    @Test func expandsColspanAndFlattensCellBlocks() {
+        let html = """
+        <html><body><table>
+          <thead><tr><th>Ay</th><th colspan="2">Gelir</th></tr></thead>
+          <tbody><tr><td><div><p>Ocak</p></div></td><td>10</td><td>20</td></tr></tbody>
+        </table></body></html>
+        """
+        let result = tables(HTMLToMarkdown.convert(html: html).markdown)
+        #expect(result == [MarkdownTable(header: ["Ay", "Gelir", ""], rows: [["Ocak", "10", "20"]])])
+    }
+}
+
+/// Uygulama içi tarayıcı: tablolar ekrandaki metinleriyle temiz tabloya çevrilmeli (ağ gerektirmez).
+@MainActor
+struct BrowserTableImportTests {
+    @Test func browserSnapshotKeepsComplexTables() async throws {
+        let html = """
+        <html><head><title>Sayfa - Alan - Confluence</title></head><body>
+        <div id="main-content"><h1>Sürüm planı</h1><p>Bu sayfada ekip ve tarihler var, tablo aşağıda.</p>
+        <div class="pm-table-container"><table><colgroup><col/><col/></colgroup><tbody>
+          <tr><th><div><p>İş</p><button aria-label="sırala">⇅</button></div></th><th><p>Sahip</p></th></tr>
+          <tr><td><div><p>API</p><p>bağlantısı</p></div></td><td><span>Talha</span></td></tr>
+        </tbody></table></div>
+        <div role="grid"><div role="row"><span role="columnheader">Tarih</span><span role="columnheader">Durum</span></div>
+          <div role="row"><span role="gridcell">10 Eki</span><span role="gridcell">Hazır</span></div></div>
+        </div></body></html>
+        """
+        let page = WebPage(html: html)
+        let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 900, height: 700), styleMask: [.titled], backing: .buffered, defer: false)
+        window.contentView = page.webView
+        window.orderFront(nil)
+        defer { window.orderOut(nil) }
+        let deadline = Date().addingTimeInterval(10)
+        repeat { try await Task.sleep(for: .milliseconds(100)) } while page.isLoading && Date() < deadline
+        try await Task.sleep(for: .milliseconds(300))
+
+        let snapshot = try await page.contentSnapshot()
+        let markdown = HTMLToMarkdown.convert(html: snapshot.html).markdown
+        let found = MarkdownDocument.parse(markdown).compactMap { if case .table(let table) = $0.block { table } else { nil } }
+        #expect(WebPage.cleanTitle(snapshot.title) == "Sayfa")
+        #expect(found.count == 2)
+        #expect(found.first?.header == ["İş", "Sahip"])
+        #expect(found.first?.rows.first == ["API bağlantısı", "Talha"])
+        #expect(found.last == MarkdownTable(header: ["Tarih", "Durum"], rows: [["10 Eki", "Hazır"]]))
     }
 }

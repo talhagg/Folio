@@ -36,6 +36,12 @@ struct LiveWebImportTests {
         let blocks = MarkdownDocument.parse(markdown)
         let tables = blocks.filter { if case .table = $0.block { true } else { false } }
         print("WEB wiki:", title, "| bloklar:", blocks.count, "| tablolar:", tables.count, "|", markdown.prefix(200).replacingOccurrences(of: "\n", with: " ⏎ "))
+        if case .table(let first)? = tables.max(by: { a, b in
+            guard case .table(let x) = a.block, case .table(let y) = b.block else { return false }
+            return x.rows.count < y.rows.count
+        })?.block {
+            print("WEB table header:", first.header, "| satır:", first.rows.count, "| ilk satır:", first.rows.first ?? [])
+        }
         #expect(!tables.isEmpty)
     }
 }

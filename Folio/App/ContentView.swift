@@ -26,7 +26,15 @@ struct ContentView: View {
         var format: ExportFormat
         var fileName: String
     }
-    @State private var isThemePickerShown = false
+    @State private var viewMode: ViewMode
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    @State private var isPaletteShown: Bool
+    @AppStorage(ListDensity.storageKey) private var densityRaw = ListDensity.detailed.rawValue
+    @Environment(\.openSettings) private var openSettings
+
+    /// Odak modu: yalnızca editör (kenar çubuğu ve liste gizli).
+    private var isFocusMode: Bool { columnVisibility == .detailOnly }
+
     /// Kenar çubuğunda açık defterler; pano/liste düzeni değişince kaybolmasın diye burada.
     @State private var expandedNotebooks: Set<UUID> = []
     @FocusState private var isSearchFocused: Bool
@@ -42,7 +50,14 @@ struct ContentView: View {
         range: 260...420
     )
 
-    init(selection: SidebarSelection = .smart(.all), searchText: String = "") {
+    init(
+        selection: SidebarSelection = .smart(.all),
+        searchText: String = "",
+        viewMode: ViewMode = .list,
+        showsPalette: Bool = false
+    ) {
+        self._viewMode = State(initialValue: viewMode)
+        self._isPaletteShown = State(initialValue: showsPalette)
         self._selection = State(initialValue: selection)
         self._searchText = State(initialValue: searchText)
     }
@@ -50,6 +65,9 @@ struct ContentView: View {
     private var filter: NoteFilter {
         NoteFilter(selection: selection, dateFilter: dateFilter, searchText: searchText, now: .now)
     }
+
+    /// Pano ve takvim için seçili kapsamın notları (tarih filtresi ve arama dahil).
+    private var scopeNotes: [Note] { filter.apply(to: allNotes) }
 
     /// Başlıktaki sayaç: tarih filtresinden bağımsız, yalnızca kenar çubuğu seçimi.
     private var selectionNotes: [Note] {
@@ -66,14 +84,17 @@ struct ContentView: View {
     var body: some View {
         // Pano tüm genişliği kullanır: iki sütun (kenar çubuğu + pano); diğer görünümler üç sütun.
         Group {
-            if selection == .board {
-                NavigationSplitView {
+            if viewMode == .board {
+                NavigationSplitView(columnVisibility: $columnVisibility) {
                     sidebar
                 } detail: {
-                    BoardView(onOpen: { show($0) })
+                    BoardView(notes: scopeNotes, scopeTitle: title, onOpen: { note in
+                        viewMode = .list
+                        show(note)
+                    })
                 }
             } else {
-                NavigationSplitView {
+                NavigationSplitView(columnVisibility: $columnVisibility) {
                     sidebar
                 } content: {
                     contentColumn
@@ -82,43 +103,27 @@ struct ContentView: View {
                 }
             }
         }
+        .overlay(alignment: .top) { paletteOverlay }
+        .overlay(alignment: .topTrailing) { focusExitButton }
+        .toolbar(isFocusMode ? .hidden : .automatic, for: .windowToolbar)
         .navigationTitle(title)
         .navigationSubtitle(subtitle)
         // Toolbar tek yerde ve sabit: içerik değişince öğeler kaybolup kaymasın, kullanılamayanlar soluklaşsın.
+        // Sade toolbar: görünüm geçişi, arama, "⋯" (dışa/içe aktar, tema), Yeni Not.
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
+                Picker("Görünüm", selection: $viewMode) {
+                    ForEach(ViewMode.allCases) { mode in
+                        Label(mode.title, systemImage: mode.symbolName).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelStyle(.iconOnly)
+                .help(Text("Liste, Pano ya da Takvim (⌃⌘1–3)"))
+
                 ToolbarSearchField(text: $searchText, isFocused: $isSearchFocused)
 
-                Menu {
-                    ForEach(ExportFormat.allCases) { format in
-                        Button {
-                            if let selectedNote { export([selectedNote], as: format) }
-                        } label: {
-                            Label("\(format.title) olarak…", systemImage: format.symbolName)
-                        }
-                        .disabled(selectedNote == nil)
-                    }
-                    Divider()
-                    Button("Tüm Notlar (JSON)…") {
-                        export(allNotes.filter { !$0.isTrashed }, as: .json, fallbackName: String(localized: "Folio Yedek"))
-                    }
-                } label: {
-                    Label("Dışa Aktar", systemImage: "square.and.arrow.up")
-                }
-                .menuIndicator(.hidden)
-                .help(Text("Dışa aktar: PDF, Word, Markdown, JSON"))
-
-                Button {
-                    isThemePickerShown.toggle()
-                } label: {
-                    Label("Tema", systemImage: "paintpalette")
-                }
-                .help(Text("Tema: görünüm ve vurgu rengi"))
-                .popover(isPresented: $isThemePickerShown, arrowEdge: .bottom) {
-                    ThemePicker()
-                        .padding(Metrics.Spacing.s4)
-                        .frame(width: 300)
-                }
+                moreMenu
 
                 // Bölünmüş düğme: tıklama boş not, ok şablon menüsü.
                 Menu {
@@ -256,8 +261,8 @@ struct ContentView: View {
 
     private var contentColumn: some View {
         Group {
-            if selection == .calendar {
-                CalendarView(selectedNoteID: $selectedNoteID)
+            if viewMode == .calendar {
+                CalendarView(notes: scopeNotes, selectedNoteID: $selectedNoteID)
             } else {
                 noteList
             }
@@ -270,6 +275,271 @@ struct ContentView: View {
             return true
         }
         .navigationSplitViewColumnWidth(min: 260, ideal: listWidth, max: 420)
+    }
+
+    /// "⋯" menüsü: dışa/içe aktarma, tema ve ayarlar.
+    private var moreMenu: some View {
+        Menu {
+            Menu("Dışa Aktar") {
+                ForEach(ExportFormat.allCases) { format in
+                    Button("\(format.title)…") {
+                        if let selectedNote { export([selectedNote], as: format) }
+                    }
+                    .disabled(selectedNote == nil)
+                }
+                Divider()
+                Button("Tüm Notlar (JSON)…") {
+                    export(allNotes.filter { !$0.isTrashed }, as: .json, fallbackName: String(localized: "Folio Yedek"))
+                }
+            }
+            Menu("İçe Aktar") {
+                Button("Dosyadan…") { isFileImporterShown = true }
+                Button("URL'den…") { isURLImportShown = true }
+            }
+            Divider()
+            Picker("Not Listesi", selection: $densityRaw) {
+                ForEach(ListDensity.allCases) { Text($0.title).tag($0.rawValue) }
+            }
+            Picker("Tema", selection: Bindable(ThemeStore.shared).appearance) {
+                ForEach(AppearanceMode.allCases) { Text($0.title).tag($0) }
+            }
+            Picker("Vurgu Rengi", selection: Bindable(ThemeStore.shared).accent) {
+                ForEach(AccentTheme.allCases) { Text($0.title).tag($0) }
+            }
+            Divider()
+            SettingsLink { Text("Ayarlar…") }
+        } label: {
+            Label("Daha Fazla", systemImage: "ellipsis.circle")
+        }
+        .menuIndicator(.hidden)
+        .help(Text("Dışa aktar, içe aktar, tema"))
+    }
+
+    // MARK: - Odak modu ve komut paleti
+
+    private func toggleFocusMode() {
+        withAnimation(.snappy) {
+            if isFocusMode {
+                columnVisibility = .all
+            } else {
+                // Pano/takvimde odak, seçili notun editöründe olur.
+                if viewMode != .list { viewMode = .list }
+                columnVisibility = .detailOnly
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var focusExitButton: some View {
+        if isFocusMode && !isPaletteShown {
+            Button { toggleFocusMode() } label: {
+                Label("Odak modundan çık", systemImage: "arrow.down.right.and.arrow.up.left")
+                    .labelStyle(.iconOnly)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Color.ds.inkSecondary)
+                    .frame(width: 28, height: 28)
+                    .background(Color.ds.surfaceHover, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut(.cancelAction)
+            .help(Text("Odak modundan çık (Esc ya da ⌘.)"))
+            .padding(Metrics.Spacing.s3)
+            .transition(.opacity)
+        }
+    }
+
+    @ViewBuilder
+    private var paletteOverlay: some View {
+        if isPaletteShown {
+            ZStack(alignment: .top) {
+                Color.black.opacity(0.12)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture { isPaletteShown = false }
+                CommandPaletteView(
+                    items: paletteItems,
+                    suggestions: paletteSuggestions,
+                    onDismiss: { isPaletteShown = false }
+                )
+                .padding(.top, 72)
+            }
+            .transition(.opacity)
+        }
+    }
+
+    /// Sorgu boşken: son düzenlenen 5 not, sonra komutlar.
+    private var paletteSuggestions: [PaletteItem] {
+        Array(paletteNoteItems.prefix(5)) + paletteCommands
+    }
+
+    private var paletteItems: [PaletteItem] {
+        paletteCommands + paletteNoteItems + paletteLocationItems
+    }
+
+    private var paletteNoteItems: [PaletteItem] {
+        allNotes.filter { !$0.isTrashed }.map { note in
+            PaletteItem(
+                id: "note-\(note.id)",
+                kind: .note,
+                title: note.title.isEmpty ? String(localized: "Başlıksız not") : note.title,
+                subtitle: note.locationPath ?? "",
+                symbolName: "doc.text",
+                perform: {
+                    if viewMode != .list { viewMode = .list }
+                    show(note)
+                }
+            )
+        }
+    }
+
+    private var paletteLocationItems: [PaletteItem] {
+        var items: [PaletteItem] = []
+        for notebook in notebooks {
+            items.append(PaletteItem(
+                id: "notebook-\(notebook.id)", kind: .notebook, title: notebook.name,
+                subtitle: String(localized: "Defter"), symbolName: "book.closed",
+                perform: { goTo(.notebook(notebook.id)) }
+            ))
+            for section in notebook.sortedSections {
+                items.append(PaletteItem(
+                    id: "section-\(section.id)", kind: .section, title: section.name,
+                    subtitle: notebook.name, symbolName: "folder",
+                    perform: { goTo(.section(section.id)) }
+                ))
+            }
+        }
+        var tags = Set<String>()
+        for note in allNotes where !note.isTrashed { tags.formUnion(note.tags) }
+        for tag in tags.sorted() {
+            items.append(PaletteItem(
+                id: "tag-\(tag)", kind: .tag, title: "#" + tag,
+                subtitle: String(localized: "Etiket"), symbolName: "number",
+                perform: { goTo(.tag(tag)) }
+            ))
+        }
+        return items
+    }
+
+    private func goTo(_ newSelection: SidebarSelection) {
+        searchText = ""
+        dateFilter = .all
+        selectedNoteID = nil
+        selection = newSelection
+    }
+
+    private var paletteCommands: [PaletteItem] {
+        var items: [PaletteItem] = [
+            PaletteItem(id: "cmd-new", kind: .command, title: String(localized: "Yeni Not"),
+                        symbolName: "square.and.pencil", keywords: "oluştur ekle", shortcut: "⌘N",
+                        perform: { addNote() }),
+            PaletteItem(id: "cmd-notebook", kind: .command, title: String(localized: "Yeni Defter"),
+                        symbolName: "book.closed", keywords: "oluştur ekle", shortcut: "⇧⌘N",
+                        perform: { newNotebookRequest += 1 }),
+            PaletteItem(id: "cmd-sticky", kind: .command, title: String(localized: "Yeni Yapışkan Not"),
+                        symbolName: "note.text", keywords: "sticky", shortcut: "⌥⌘N",
+                        perform: { newSticky() }),
+        ]
+        for template in NoteTemplate.allCases {
+            items.append(PaletteItem(
+                id: "cmd-template-\(template.id)", kind: .command,
+                title: String(localized: "Şablondan Yeni Not: \(template.title)"),
+                symbolName: template.symbolName, keywords: "şablon",
+                perform: { addNote(template: template) }
+            ))
+        }
+        for (index, mode) in ViewMode.allCases.enumerated() {
+            items.append(PaletteItem(
+                id: "cmd-view-\(mode.rawValue)", kind: .command,
+                title: String(localized: "Görünüm: \(mode.title)"),
+                symbolName: mode.symbolName, keywords: "görünüm", shortcut: "⌃⌘\(index + 1)",
+                perform: { withAnimation(.snappy) { viewMode = mode } }
+            ))
+        }
+        items.append(PaletteItem(
+            id: "cmd-focus", kind: .command,
+            title: isFocusMode ? String(localized: "Odak Modundan Çık") : String(localized: "Odak Modu"),
+            symbolName: "arrow.up.left.and.arrow.down.right", keywords: "tam ekran yalnız editör", shortcut: "⌘.",
+            perform: { toggleFocusMode() }
+        ))
+        items.append(PaletteItem(
+            id: "cmd-search", kind: .command, title: String(localized: "Notlarda Ara"),
+            symbolName: "magnifyingglass", keywords: "bul", shortcut: "⌘F",
+            perform: { isSearchFocused = true }
+        ))
+        for (index, smart) in SmartFilter.allCases.enumerated() {
+            items.append(PaletteItem(
+                id: "cmd-smart-\(index)", kind: .command, title: smart.title,
+                subtitle: String(localized: "Filtre"), symbolName: smart.symbolName, shortcut: "⌘\(index + 1)",
+                perform: { goTo(.smart(smart)) }
+            ))
+        }
+        items.append(PaletteItem(
+            id: "cmd-trash", kind: .command, title: String(localized: "Son Silinenler"),
+            symbolName: "trash", keywords: "çöp",
+            perform: { goTo(.trash) }
+        ))
+        if let note = selectedNote {
+            for format in ExportFormat.allCases {
+                items.append(PaletteItem(
+                    id: "cmd-export-\(format.id)", kind: .command,
+                    title: String(localized: "Notu Dışa Aktar: \(format.title)"),
+                    symbolName: "square.and.arrow.up", keywords: "export kaydet",
+                    perform: { export([note], as: format) }
+                ))
+            }
+            if !note.isTrashed {
+                items.append(PaletteItem(
+                    id: "cmd-pin", kind: .command,
+                    title: note.isPinned ? String(localized: "Sabitlemeyi Kaldır") : String(localized: "Sabitle"),
+                    symbolName: "pin", shortcut: "⌘P",
+                    perform: { withAnimation(.snappy) { note.isPinned.toggle(); note.touch() } }
+                ))
+                items.append(PaletteItem(
+                    id: "cmd-open-sticky", kind: .command, title: String(localized: "Yapışkan Not Olarak Aç"),
+                    symbolName: "note.text", shortcut: "⌥⌘S",
+                    perform: { openWindow(id: StickyNote.windowID, value: note.id) }
+                ))
+            }
+        }
+        items += [
+            PaletteItem(id: "cmd-export-all", kind: .command, title: String(localized: "Tüm Notları Dışa Aktar (JSON)"),
+                        symbolName: "square.and.arrow.up.on.square", keywords: "yedek export",
+                        perform: { export(allNotes.filter { !$0.isTrashed }, as: .json, fallbackName: String(localized: "Folio Yedek")) }),
+            PaletteItem(id: "cmd-import-file", kind: .command, title: String(localized: "Dosyadan İçe Aktar"),
+                        symbolName: "square.and.arrow.down", keywords: "import csv json excel word", shortcut: "⇧⌘I",
+                        perform: { isFileImporterShown = true }),
+            PaletteItem(id: "cmd-import-url", kind: .command, title: String(localized: "URL'den İçe Aktar"),
+                        symbolName: "link", keywords: "import web confluence", shortcut: "⇧⌘U",
+                        perform: { isURLImportShown = true }),
+        ]
+        for mode in AppearanceMode.allCases {
+            items.append(PaletteItem(
+                id: "cmd-appearance-\(mode.id)", kind: .command, title: String(localized: "Tema: \(mode.title)"),
+                symbolName: "circle.lefthalf.filled", keywords: "görünüm açık koyu",
+                perform: { ThemeStore.shared.appearance = mode }
+            ))
+        }
+        for accent in AccentTheme.allCases {
+            items.append(PaletteItem(
+                id: "cmd-accent-\(accent.id)", kind: .command, title: String(localized: "Vurgu Rengi: \(accent.title)"),
+                symbolName: "paintpalette", keywords: "tema renk",
+                perform: { ThemeStore.shared.accent = accent }
+            ))
+        }
+        for density in ListDensity.allCases {
+            items.append(PaletteItem(
+                id: "cmd-density-\(density.rawValue)", kind: .command,
+                title: String(localized: "Not Listesi: \(density.title)"),
+                symbolName: "list.dash", keywords: "yoğunluk",
+                perform: { densityRaw = density.rawValue }
+            ))
+        }
+        items.append(PaletteItem(
+            id: "cmd-settings", kind: .command, title: String(localized: "Ayarlar"),
+            symbolName: "gearshape", keywords: "tercihler", shortcut: "⌘,",
+            perform: { openSettings() }
+        ))
+        return items
     }
 
     private var noteList: some View {
@@ -331,10 +601,6 @@ struct ContentView: View {
             return String(localized: "Son Silinenler")
         case .tag(let tag):
             return "#" + tag
-        case .board:
-            return String(localized: "Pano")
-        case .calendar:
-            return String(localized: "Takvim")
         case nil:
             return "Folio"
         }
@@ -411,7 +677,12 @@ struct ContentView: View {
             exportAll: exportAll,
             openSticky: openSticky,
             newSticky: { newSticky() },
-            newFromTemplate: { addNote(template: $0) }
+            newFromTemplate: { addNote(template: $0) },
+            viewMode: viewMode,
+            setViewMode: { mode in withAnimation(.snappy) { viewMode = mode } },
+            isFocusMode: isFocusMode,
+            toggleFocusMode: { toggleFocusMode() },
+            showCommandPalette: { isPaletteShown = true }
         )
     }
 

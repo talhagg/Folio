@@ -1,6 +1,15 @@
 {
   "sourceLanguage" : "tr",
   "strings" : {
+    "" : {
+
+    },
+    " " : {
+
+    },
+    ".%@ dosyaları içe aktarılamıyor. Desteklenenler: CSV, JSON, Excel (.xlsx), Word (.docx), Markdown, TXT, HTML." : {
+
+    },
     "“%@” · Son Silinenler'de" : {
 
     },
@@ -13,16 +22,55 @@
     "“%@” defteri silinsin mi?" : {
 
     },
+    "\"%@\" Folio'ya eklendi." : {
+
+    },
     "“%@” kalıcı olarak silinsin mi?" : {
 
     },
     "“%@” Son Silinenler'e taşınsın mı?" : {
 
     },
+    "[Ek: %@]" : {
+
+    },
+    "[Görsel: %@]" : {
+
+    },
+    "%@" : {
+
+    },
     "%@ · tüm notlar" : {
 
     },
+    "%@ bölümüne kaydedildi" : {
+
+    },
+    "%@ bölümüne yeni not" : {
+
+    },
+    "%@ çok büyük (en fazla 25 MB)." : {
+
+    },
+    "%@ defterine ekle" : {
+
+    },
+    "%@ defterine yeni bölüm" : {
+
+    },
+    "%@ erişim izni vermedi. Ayarlar → İçe Aktarma'dan bu site için Confluence e-postanızı ve API token'ınızı girin." : {
+
+    },
     "%@ filtresini kaldır" : {
+
+    },
+    "%@ notundaki görevin hedefi bugün" : {
+
+    },
+    "%@ okunamadı." : {
+
+    },
+    "%@ olarak…" : {
 
     },
     "%@, %@" : {
@@ -35,6 +83,9 @@
         }
       }
     },
+    "%@…" : {
+
+    },
     "%lld gün kaldı" : {
 
     },
@@ -44,10 +95,36 @@
     "%lld not" : {
 
     },
+    "%lld not \"%@\" defterine eklendi." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld not \"%2$@\" defterine eklendi."
+          }
+        }
+      }
+    },
     "%lld not kalıcı olarak silinecek. Bu işlem geri alınamaz." : {
 
     },
+    "%lld pt" : {
+
+    },
+    "%lld satır · %lld sütun" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld satır · %2$lld sütun"
+          }
+        }
+      }
+    },
     "%lld sonuç" : {
+
+    },
+    "%lld." : {
 
     },
     "%lld/%lld görev · %@" : {
@@ -60,10 +137,52 @@
         }
       }
     },
-    "Ad" : {
+    "•" : {
+
+    },
+    "⌃⌥N" : {
+
+    },
+    "⌃⌥N ile her yerden yapışkan not" : {
+
+    },
+    "⌘F" : {
+
+    },
+    "${noteTitle} notunu ekle" : {
+
+    },
+    "1 saat ertele" : {
+
+    },
+    "Aç" : {
+
+    },
+    "Açık" : {
+
+    },
+    "Alıntı" : {
+
+    },
+    "Alt başlık" : {
+
+    },
+    "Alt sayfaları da içe aktar (en fazla %lld)" : {
+
+    },
+    "API token" : {
+
+    },
+    "Ara" : {
 
     },
     "Arama" : {
+
+    },
+    "Aramayı temizle" : {
+
+    },
+    "Aranan" : {
 
     },
     "Arduvaz" : {
@@ -78,13 +197,28 @@
     "Başlanmadı" : {
 
     },
+    "Başlık" : {
+
+    },
+    "Başlık, içerik ve görevlerde arar." : {
+
+    },
     "Başlıksız not" : {
+
+    },
+    "Bilgiler silindi." : {
 
     },
     "Bir not seçin" : {
 
     },
+    "Bir sayfayı alt sayfalarıyla birlikte toplu içe aktarmak için. Cloud: id.atlassian.com → Güvenlik → API token. Server: profil → Kişisel erişim token'ları. Token Keychain'de saklanır ve yalnızca bu siteye gönderilir." : {
+
+    },
     "Bitiş" : {
+
+    },
+    "Bitti" : {
 
     },
     "Bloke" : {
@@ -96,10 +230,16 @@
     "Blokeyi Kaldır" : {
 
     },
+    "Bölümü Dışa Aktar (JSON)…" : {
+
+    },
     "Bölümü Sil…" : {
 
     },
     "Bölümü Yeniden Adlandır" : {
+
+    },
+    "Boş Not" : {
 
     },
     "Boşalt" : {
@@ -114,16 +254,37 @@
     "Bu görünümde not yok" : {
 
     },
+    "Bu gün için hedef yok" : {
+
+    },
     "Bu hafta" : {
 
     },
     "Bu Hafta" : {
 
     },
+    "Bu içerik türü içe aktarılamıyor: %@" : {
+
+    },
+    "Bu isimde bir bölüm zaten var." : {
+
+    },
+    "Bu isimde bir defter zaten var." : {
+
+    },
     "Bu işlem geri alınamaz." : {
 
     },
+    "Bu not silinmiş" : {
+
+    },
     "Bu not Son Silinenler'de" : {
+
+    },
+    "Bu nota bağlananlar" : {
+
+    },
+    "Bu Sayfayı İçe Aktar" : {
 
     },
     "Bugün" : {
@@ -132,10 +293,25 @@
     "bugün %@" : {
 
     },
+    "Bugün hedef tarihi%@" : {
+
+    },
     "Bugün kalıcı olarak silinecek." : {
 
     },
     "Bugün silinecek" : {
+
+    },
+    "Büyük" : {
+
+    },
+    "Confluence alt sayfaları (isteğe bağlı)" : {
+
+    },
+    "Confluence sayfası" : {
+
+    },
+    "Daha Büyük" : {
 
     },
     "Daha eski" : {
@@ -144,7 +320,13 @@
     "Daralt" : {
 
     },
+    "Defter" : {
+
+    },
     "Defter: %@" : {
+
+    },
+    "Defteri Dışa Aktar (JSON)…" : {
 
     },
     "Defteri Sil…" : {
@@ -156,6 +338,9 @@
     "Defterler" : {
 
     },
+    "Demo hazırla" : {
+
+    },
     "Deniz" : {
 
     },
@@ -163,6 +348,36 @@
 
     },
     "Devam ediyor" : {
+
+    },
+    "Diğer pencerelerin üstünde tut" : {
+
+    },
+    "Diğer pencerelerin üstünde tutma" : {
+
+    },
+    "Dışa Aktar" : {
+
+    },
+    "Dışa aktar: PDF, Word, Markdown, JSON" : {
+
+    },
+    "Dışa aktarılamadı: %@" : {
+
+    },
+    "Dosya bulunamadı" : {
+
+    },
+    "Dosya çok büyük (en fazla 50 MB)." : {
+
+    },
+    "Dosya okunamadı: %@" : {
+
+    },
+    "Dosya ya da görsel ekle (görselleri yapıştırabilir ya da sürükleyebilirsiniz)" : {
+
+    },
+    "Dosyadan İçe Aktar…" : {
 
     },
     "Dün" : {
@@ -174,7 +389,65 @@
     "Durumu değiştir" : {
 
     },
+    "Düzelt" : {
+
+    },
+    "Düzenlemeyi bitir (Esc)" : {
+
+    },
+    "Düzenlendi %@" : {
+
+    },
+    "E-posta" : {
+
+    },
+    "Ekle" : {
+
+    },
+    "Eklenemedi" : {
+
+    },
+    "En Büyük" : {
+
+    },
     "Erik" : {
+
+    },
+    "Eski .%@ biçimi desteklenmiyor; dosyayı .%@x olarak kaydedip tekrar deneyin." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Eski .%1$@ biçimi desteklenmiyor; dosyayı .%2$@x olarak kaydedip tekrar deneyin."
+          }
+        }
+      }
+    },
+    "Etiketler" : {
+
+    },
+    "Folio" : {
+
+    },
+    "Folio Yedek" : {
+
+    },
+    "Folio'da Not Ara" : {
+
+    },
+    "Folio'da Notu Aç" : {
+
+    },
+    "Folio'ya Not Ekle" : {
+
+    },
+    "Folio'yu Aç" : {
+
+    },
+    "Geçerli bir http(s) adresi girin." : {
+
+    },
+    "geçerli bir JSON değil" : {
 
     },
     "Gecikti, %@" : {
@@ -186,10 +459,19 @@
     "Genişlet" : {
 
     },
+    "Gerçek Boyut" : {
+
+    },
+    "Geri" : {
+
+    },
     "Geri Yükle" : {
 
     },
     "Geri Yükle: Bölüm Seç" : {
+
+    },
+    "Giriş gerekiyorsa sayfada oturum açın; sonra \"Bu Sayfayı İçe Aktar\"a basın." : {
 
     },
     "Görev" : {
@@ -198,10 +480,65 @@
     "Görev ekle" : {
 
     },
+    "Görev listesi" : {
+
+    },
     "Görevi Sil" : {
 
     },
     "Görevler" : {
+
+    },
+    "Görevler — %@, %lld/%lld · %@" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Görevler — %1$@, %2$lld/%3$lld · %4$@"
+          }
+        }
+      }
+    },
+    "Görevleri dağıt" : {
+
+    },
+    "Görsel" : {
+
+    },
+    "Görsel %@" : {
+
+    },
+    "Görsel bulunamadı" : {
+
+    },
+    "Görsel yükleniyor…" : {
+
+    },
+    "Görünüm" : {
+
+    },
+    "Görünümler" : {
+
+    },
+    "Grafit" : {
+
+    },
+    "Gri" : {
+
+    },
+    "Günlük" : {
+
+    },
+    "Günlük – %@" : {
+
+    },
+    "Hata kaydı" : {
+
+    },
+    "Hata: " : {
+
+    },
+    "Hatırlatıcılar" : {
 
     },
     "Hedef ekle" : {
@@ -219,7 +556,58 @@
     "Hedef tarihi kaldır" : {
 
     },
+    "Hedef tarihi olan notlar ve görevler için o günün bu saatinde bildirim gelir." : {
+
+    },
+    "Hedef tarihlerde hatırlat" : {
+
+    },
+    "Hedef var" : {
+
+    },
     "Hedef: %@" : {
+
+    },
+    "Her sayfa token olmadan içe aktarılabilir: sayfa uygulamanın içinde açılır, gerekirse orada giriş yaparsınız." : {
+
+    },
+    "Her uygulamadan yeni yapışkan not" : {
+
+    },
+    "Hızlı not" : {
+
+    },
+    "Hızlı Not" : {
+
+    },
+    "Hızlı not bölümüne yeni bir not ekler." : {
+
+    },
+    "https://…" : {
+
+    },
+    "İçe Aktar" : {
+
+    },
+    "İçe aktar: JSON, CSV, Excel, Word, Markdown, Confluence…" : {
+
+    },
+    "İçe aktarılacak içerik bulunamadı." : {
+
+    },
+    "İçe Aktarılanlar" : {
+
+    },
+    "İçe aktarma" : {
+
+    },
+    "İçe Aktarma" : {
+
+    },
+    "İçerik" : {
+
+    },
+    "İçerik çok büyük (en fazla 20 MB)." : {
 
     },
     "İçindeki %lld not Son Silinenler'e taşınacak; %lld gün içinde geri yükleyebilirsiniz." : {
@@ -233,6 +621,15 @@
       }
     },
     "İlerleme" : {
+
+    },
+    "İsim" : {
+
+    },
+    "İtalik (⌘I)" : {
+
+    },
+    "JSON" : {
 
     },
     "Kaldır" : {
@@ -250,7 +647,25 @@
     "Kalıcı Sil…" : {
 
     },
+    "Kalın (⌘B)" : {
+
+    },
+    "Kapsamı netleştir" : {
+
+    },
+    "Kartları sürükleyerek durumu değiştirin" : {
+
+    },
+    "Kaydedildi." : {
+
+    },
+    "Kaydedilemedi: %@" : {
+
+    },
     "Kaydet" : {
+
+    },
+    "Kaydet ve yapışkan not olarak aç" : {
 
     },
     "Kehribar" : {
@@ -259,10 +674,64 @@
     "Kil" : {
 
     },
+    "Kod" : {
+
+    },
+    "Koyu" : {
+
+    },
+    "Küçük" : {
+
+    },
+    "Küçük başlık" : {
+
+    },
+    "Madde listesi" : {
+
+    },
+    "Markdown" : {
+
+    },
+    "Mavi" : {
+
+    },
+    "Menü çubuğundaki Folio simgesinden de hızlı not alabilirsiniz." : {
+
+    },
+    "Metin" : {
+
+    },
+    "Mor" : {
+
+    },
+    "Ne düşünüyorsunuz? İlk satır başlık olur." : {
+
+    },
+    "Normal" : {
+
+    },
     "Not" : {
 
     },
     "Not %lld gün boyunca Son Silinenler'de kalır, sonra kalıcı olarak silinir." : {
+
+    },
+    "Not Ara" : {
+
+    },
+    "Not Ekle" : {
+
+    },
+    "Not gövdesi" : {
+
+    },
+    "Not yazı boyutu" : {
+
+    },
+    "Not yok" : {
+
+    },
+    "Notlar" : {
 
     },
     "Notlar silindikten %lld gün sonra kalıcı olarak silinir." : {
@@ -277,6 +746,30 @@
     "Notlarım" : {
 
     },
+    "Notu Aç" : {
+
+    },
+    "Notu açmak için tıklayın; durumu değiştirmek için başka sütuna sürükleyin." : {
+
+    },
+    "Notu Dışa Aktar" : {
+
+    },
+    "Notun kaydedileceği bölüm" : {
+
+    },
+    "Numaralı liste" : {
+
+    },
+    "Okunuyor…" : {
+
+    },
+    "Oluştur" : {
+
+    },
+    "Oluşturuldu %@" : {
+
+    },
     "Oluşturuldu %@ · Düzenlendi %@" : {
       "localizations" : {
         "tr" : {
@@ -287,13 +780,43 @@
         }
       }
     },
+    "Önceki ay" : {
+
+    },
     "Özel" : {
 
     },
     "Özel aralık" : {
 
     },
+    "Özel tarih aralığı" : {
+
+    },
+    "Pano" : {
+
+    },
+    "Paragraf stili" : {
+
+    },
+    "Paydaşları belirle" : {
+
+    },
+    "PDF" : {
+
+    },
+    "PDF Olarak Dışa Aktar…" : {
+
+    },
+    "Pembe" : {
+
+    },
+    "Proje planı" : {
+
+    },
     "Renk" : {
+
+    },
+    "Saat" : {
 
     },
     "Sabitle" : {
@@ -311,6 +834,27 @@
     "Sabitlenmiş" : {
 
     },
+    "Şablondan Yeni Not" : {
+
+    },
+    "Sarı" : {
+
+    },
+    "Satır Ekle" : {
+
+    },
+    "Satırı sil" : {
+
+    },
+    "Sayfa %lld" : {
+
+    },
+    "Sayfa okunamadı: %@" : {
+
+    },
+    "Sayfayı Aç" : {
+
+    },
     "Sil" : {
 
     },
@@ -321,6 +865,18 @@
 
     },
     "Silinen notlar %lld gün sonra kalıcı olarak silinir." : {
+
+    },
+    "sirket.atlassian.net" : {
+
+    },
+    "Sistem" : {
+
+    },
+    "Site" : {
+
+    },
+    "Son notlar" : {
 
     },
     "Son Silinenler" : {
@@ -341,7 +897,46 @@
     "Son Silinenleri Boşalt…" : {
 
     },
+    "Sonraki ay" : {
+
+    },
     "Sonuç bulunamadı" : {
+
+    },
+    "Sprint planı" : {
+
+    },
+    "Sunucu hata döndürdü (HTTP %lld)." : {
+
+    },
+    "Sütun %lld" : {
+
+    },
+    "Sütun Ekle" : {
+
+    },
+    "Sütunu sil" : {
+
+    },
+    "Tablo Ekle" : {
+
+    },
+    "Tablo ekle (⌥⌘T)" : {
+
+    },
+    "Tabloyu Düzenle" : {
+
+    },
+    "Tabloyu Sil" : {
+
+    },
+    "Takvim" : {
+
+    },
+    "Tamam" : {
+
+    },
+    "Tamamla" : {
 
     },
     "Tamamlandı" : {
@@ -362,7 +957,34 @@
     "Taşı" : {
 
     },
+    "Tema" : {
+
+    },
+    "Tema: görünüm ve vurgu rengi" : {
+
+    },
+    "Test et" : {
+
+    },
+    "Toplantı – %@" : {
+
+    },
+    "Toplantı notlarını paylaş" : {
+
+    },
+    "Toplantı notu" : {
+
+    },
+    "Tüm defterler" : {
+
+    },
     "Tüm Notlar" : {
+
+    },
+    "Tüm Notlar (JSON)…" : {
+
+    },
+    "Tüm Notları Dışa Aktar (JSON)…" : {
 
     },
     "Tüm tarihler" : {
@@ -371,13 +993,73 @@
     "Tümü" : {
 
     },
+    "Turuncu" : {
+
+    },
+    "URL'den İçe Aktar" : {
+
+    },
+    "URL'den İçe Aktar…" : {
+
+    },
+    "Üstte tut" : {
+
+    },
     "Uygula" : {
+
+    },
+    "Varsayılan uygulamada aç" : {
 
     },
     "Vazgeç" : {
 
     },
+    "Vurgu rengi" : {
+
+    },
+    "Vurgu Rengi" : {
+
+    },
+    "Web sayfası, Confluence sayfası ya da JSON, CSV, Excel, Word, Markdown dosyası adresi." : {
+
+    },
+    "Word (.docx)" : {
+
+    },
     "ya da ⌘N ile yenisini oluşturun" : {
+
+    },
+    "Yalnızca Cloud için" : {
+
+    },
+    "Yapışkan Not" : {
+
+    },
+    "Yapışkan not olarak aç" : {
+
+    },
+    "Yapışkan Not Olarak Aç" : {
+
+    },
+    "Yazarken üstteki biçim çubuğundan ya da ⌘+ / ⌘- ile de değiştirebilirsiniz." : {
+
+    },
+    "Yazı" : {
+
+    },
+    "Yazı boyutu" : {
+
+    },
+    "Yazıyı Büyüt" : {
+
+    },
+    "Yazıyı büyüt (⌘+)" : {
+
+    },
+    "Yazıyı Küçült" : {
+
+    },
+    "Yazıyı küçült (⌘-)" : {
 
     },
     "Yazmaya başlayın…" : {
@@ -395,16 +1077,34 @@
     "Yeni Defter" : {
 
     },
+    "Yeni defter (⇧⌘N)" : {
+
+    },
     "Yeni Not" : {
 
     },
-    "Yeni not oluştur (⌘N)" : {
+    "Yeni not (⌘N) — ok: şablondan" : {
+
+    },
+    "Yeni Yapışkan Not" : {
 
     },
     "Yeniden Adlandır…" : {
 
     },
+    "Yeniden üret" : {
+
+    },
+    "Yenile" : {
+
+    },
+    "Yeşil" : {
+
+    },
     "Yosun" : {
+
+    },
+    "Zaman çizelgesi çıkar" : {
 
     }
   },

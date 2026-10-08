@@ -34,7 +34,7 @@ struct ToolbarTests {
         print("TOOLBAR trash:", inTrash)
         #expect(!withNote.isEmpty)
         #expect(withNote == inTrash)
-        #expect(withNote == ["özel görünüm", "Dışa Aktar", "Tema", "Yeni Not"])
+        #expect(withNote == ["Görünüm", "özel görünüm", "Daha Fazla", "Yeni Not"])
 
         if let directory = ProcessInfo.processInfo.environment["SNAPSHOT_DIR"], let frame = notes.contentView?.superview,
            let rep = frame.bitmapImageRepForCachingDisplay(in: frame.bounds) {

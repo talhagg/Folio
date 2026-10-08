@@ -25,6 +25,8 @@ struct SidebarView: View {
     @State private var deleteTarget: LibraryItem?
     @State private var isHeaderHovered = false
     @State private var hoveredRow: SidebarSelection?
+    @AppStorage("sidebar.notebooksCollapsed") private var notebooksCollapsed = false
+    @AppStorage("sidebar.tagsCollapsed") private var tagsCollapsed = false
     @State private var dropTarget: SidebarSelection?
     @State private var isEmptyTrashConfirmationShown = false
 
@@ -52,34 +54,30 @@ struct SidebarView: View {
                         )
                     }
 
-                    sectionHeader("Görünümler")
-                        .padding(.top, Metrics.Spacing.s6 - 4)
-                        .padding(.bottom, Metrics.Spacing.s1)
-                    row(for: .board, title: String(localized: "Pano"), systemImage: "rectangle.split.3x1",
-                        count: notes.count(where: { !$0.isTrashed }))
-                    row(for: .calendar, title: String(localized: "Takvim"), systemImage: "calendar",
-                        count: notes.count(where: { !$0.isTrashed && ($0.dueDate != nil || $0.sortedTasks.contains { $0.dueDate != nil }) }))
-
                     notebooksHeader
                         .padding(.top, Metrics.Spacing.s6 - 4)
                         .padding(.bottom, Metrics.Spacing.s1)
 
-                    ForEach(notebooks) { notebook in
-                        notebookRow(notebook)
-                        if expanded.contains(notebook.id) {
-                            ForEach(notebook.sortedSections) { section in
-                                sectionRow(section)
+                    if !notebooksCollapsed {
+                        ForEach(notebooks) { notebook in
+                            notebookRow(notebook)
+                            if expanded.contains(notebook.id) {
+                                ForEach(notebook.sortedSections) { section in
+                                    sectionRow(section)
+                                }
                             }
                         }
                     }
 
                     let tags = tagCounts
                     if !tags.isEmpty {
-                        sectionHeader("Etiketler")
+                        collapsibleHeader("Etiketler", isCollapsed: $tagsCollapsed)
                             .padding(.top, Metrics.Spacing.s6 - 4)
                             .padding(.bottom, Metrics.Spacing.s1)
-                        ForEach(tags, id: \.tag) { item in
-                            row(for: .tag(item.tag), title: item.tag, systemImage: "number", count: item.count)
+                        if !tagsCollapsed {
+                            ForEach(tags, id: \.tag) { item in
+                                row(for: .tag(item.tag), title: item.tag, systemImage: "number", count: item.count)
+                            }
                         }
                     }
 
@@ -130,19 +128,14 @@ struct SidebarView: View {
 
     // MARK: - Satırlar
 
-    private func sectionHeader(_ title: LocalizedStringKey) -> some View {
-        Text(title)
-            .textStyle(.sectionLabel)
-            .foregroundStyle(Color.ds.inkTertiary)
-            .padding(.horizontal, Metrics.Spacing.s2)
-            .frame(maxWidth: .infinity, alignment: .leading)
+    /// Başlığa tıklayınca bölüm katlanır; üzerine gelince ok belirir.
+    private func collapsibleHeader(_ title: LocalizedStringKey, isCollapsed: Binding<Bool>) -> some View {
+        CollapsibleHeader(title: title, isCollapsed: isCollapsed)
     }
 
     private var notebooksHeader: some View {
         HStack {
-            Text("Defterler")
-                .textStyle(.sectionLabel)
-                .foregroundStyle(Color.ds.inkTertiary)
+            CollapsibleHeader(title: "Defterler", isCollapsed: $notebooksCollapsed)
             Spacer()
             Button(action: addNotebook) {
                 PlusIcon(size: 12, isHighlighted: isHeaderHovered)
@@ -152,7 +145,6 @@ struct SidebarView: View {
             .help(Text("Yeni defter (⇧⌘N)"))
             .accessibilityLabel(Text("Yeni defter"))
         }
-        .padding(.leading, Metrics.Spacing.s2)
         .padding(.trailing, Metrics.Spacing.s1)
     }
 
@@ -450,14 +442,14 @@ struct SidebarView: View {
     // MARK: - Klavye
 
     private var visibleItems: [SidebarSelection] {
-        var items = SmartFilter.allCases.map(SidebarSelection.smart) + [.board, .calendar]
-        for notebook in notebooks {
+        var items = SmartFilter.allCases.map(SidebarSelection.smart)
+        for notebook in notebooksCollapsed ? [] : notebooks {
             items.append(.notebook(notebook.id))
             if expanded.contains(notebook.id) {
                 items += notebook.sortedSections.map { .section($0.id) }
             }
         }
-        items += tagCounts.map { .tag($0.tag) }
+        items += tagsCollapsed ? [] : tagCounts.map { .tag($0.tag) }
         items.append(.trash)
         return items
     }
@@ -658,6 +650,38 @@ private enum LibraryItem {
         case .notebook(let notebook): notebook.name = trimmed
         case .section(let section): section.name = trimmed
         }
+    }
+}
+
+/// Katlanabilir bölüm başlığı (DEFTERLER, ETİKETLER).
+private struct CollapsibleHeader: View {
+    let title: LocalizedStringKey
+    @Binding var isCollapsed: Bool
+    @State private var isHovered = false
+
+    var body: some View {
+        Button {
+            withAnimation(.snappy(duration: 0.2)) { isCollapsed.toggle() }
+        } label: {
+            HStack(spacing: 4) {
+                Text(title)
+                    .textStyle(.sectionLabel)
+                    .foregroundStyle(Color.ds.inkTertiary)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(Color.ds.inkTertiary)
+                    .rotationEffect(.degrees(isCollapsed ? 0 : 90))
+                    .opacity(isHovered || isCollapsed ? 1 : 0)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, Metrics.Spacing.s2)
+            .frame(height: 22)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .accessibilityLabel(Text(title))
+        .accessibilityValue(Text(isCollapsed ? "Kapalı" : "Açık"))
     }
 }
 

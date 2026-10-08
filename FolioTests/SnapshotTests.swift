@@ -99,10 +99,27 @@ struct SnapshotTests {
 
     @Test(arguments: ["board", "calendar"])
     func views(name: String) throws {
-        let view = ContentView(selection: name == "board" ? .board : .calendar)
+        let view = ContentView(viewMode: name == "board" ? .board : .calendar)
             .modelContainer(SampleData.container())
             .frame(width: 1240, height: 720)
         try render(view, size: CGSize(width: 1240, height: 720), name: "view-\(name)", dark: false)
+    }
+
+    @Test(arguments: ["light", "dark"])
+    func commandPalette(appearance: String) throws {
+        let view = ContentView(showsPalette: true)
+            .modelContainer(SampleData.container())
+            .frame(width: 1240, height: 720)
+        try render(view, size: CGSize(width: 1240, height: 720), name: "palette-\(appearance)", dark: appearance == "dark")
+    }
+
+    @Test func compactList() throws {
+        UserDefaults.standard.set(ListDensity.compact.rawValue, forKey: ListDensity.storageKey)
+        defer { UserDefaults.standard.removeObject(forKey: ListDensity.storageKey) }
+        let view = ContentView()
+            .modelContainer(SampleData.container())
+            .frame(width: 1240, height: 720)
+        try render(view, size: CGSize(width: 1240, height: 720), name: "list-compact", dark: false)
     }
 
     @Test func trash() throws {

@@ -18,6 +18,9 @@ struct NoteEditorView: View {
     @State private var editorController = MarkdownEditorController()
     @State private var currentLineStyle: MarkdownLineStyle = .body
     @State private var isAttachImporterShown = false
+    @State private var isHeaderHovered = false
+    /// Görevi olmayan notta "+ Görev" ile açılır.
+    @State private var isAddingFirstTask = false
     @State private var attachError: String?
     @AppStorage(EditorTextSize.storageKey) private var textSizeRaw = EditorTextSize.normal.rawValue
 
@@ -47,7 +50,7 @@ struct NoteEditorView: View {
 
                 Group {
                 metaLine
-                    .padding(.bottom, Metrics.Spacing.s4)
+                    .padding(.bottom, Metrics.Spacing.s3)
 
                 TextField("Başlıksız not", text: editedBinding(\.title, field: .title), axis: .vertical)
                     .textFieldStyle(.plain)
@@ -59,17 +62,17 @@ struct NoteEditorView: View {
 
                 if note.taskCount > 0 || note.isBlocked {
                     ProgressCard(note: note)
-                        .padding(.bottom, Metrics.Spacing.s6)
+                        .padding(.bottom, Metrics.Spacing.s3)
                 }
 
-                Text("Görevler")
-                    .textStyle(.noteHeading, scale: scale)
-                    .foregroundStyle(Color.ds.ink)
-                    .padding(.bottom, Metrics.Spacing.s2)
-
-                TaskListView(note: note, now: now)
-                    .padding(.leading, -18)
-                    .padding(.bottom, Metrics.Spacing.s6)
+                // Görev bölümü yalnızca görev varken (ya da "+ Görev" ile eklenirken) görünür.
+                if note.taskCount > 0 || isAddingFirstTask {
+                    TaskListView(note: note, now: now, startsAdding: isAddingFirstTask && note.taskCount == 0)
+                        .padding(.leading, -18)
+                        .padding(.bottom, Metrics.Spacing.s6)
+                } else if note.isBlocked {
+                    Spacer().frame(height: Metrics.Spacing.s3)
+                }
 
                 bodySection
 
@@ -108,6 +111,9 @@ struct NoteEditorView: View {
         }
         .animation(.snappy(duration: 0.2), value: isEditingBody)
         // Yazma bitince geçici biçim hatalarını (ör. `**kalın **`) düzelt.
+        .onChange(of: note.taskCount) { _, count in
+            if count > 0 { isAddingFirstTask = false }
+        }
         .onChange(of: isEditingBody) { wasEditing, isEditing in
             if wasEditing && !isEditing { normalizeBody() }
         }
@@ -179,31 +185,51 @@ struct NoteEditorView: View {
 
     // MARK: - Üst satır
 
+    /// Tek, sade satır: konum · düzenlenme · hedef. Oluşturulma ipucunda; boş eylemler yalnızca üzerine gelince.
     private var metaLine: some View {
-        HStack(spacing: Metrics.Spacing.s4) {
+        HStack(spacing: Metrics.Spacing.s2) {
             if let section = note.section, let notebook = section.notebook {
-                HStack(spacing: 6) {
-                    Circle().fill(notebook.color.color).frame(width: 7, height: 7)
-                    Text(notebook.name)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 8, weight: .semibold))
-                        .foregroundStyle(Color.ds.inkTertiary)
-                    Text(section.name)
+                HStack(spacing: 5) {
+                    Circle().fill(notebook.color.color).frame(width: 6, height: 6)
+                    Text("\(notebook.name) › \(section.name)")
                 }
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel(Text("\(notebook.name), \(section.name)"))
+                Text("·").foregroundStyle(Color.ds.inkTertiary)
             }
 
-            Text("Oluşturuldu \(DateGrouping.editorDateText(for: note.createdAt, now: now)) · Düzenlendi \(DateGrouping.editorDateText(for: note.updatedAt, now: now))")
+            Text("Düzenlendi \(DateGrouping.editorDateText(for: note.updatedAt, now: now))")
                 .lineLimit(1)
-                .truncationMode(.middle)
+                .help(Text("Oluşturuldu \(DateGrouping.editorDateText(for: note.createdAt, now: now))"))
 
-            dueDateButton
+            if note.dueDate != nil {
+                Text("·").foregroundStyle(Color.ds.inkTertiary)
+                dueDateButton
+            }
 
-            Spacer(minLength: 0)
+            Spacer(minLength: Metrics.Spacing.s2)
+
+            if !note.isTrashed {
+                HStack(spacing: Metrics.Spacing.s3) {
+                    if note.dueDate == nil { dueDateButton }
+                    if note.taskCount == 0 && !isAddingFirstTask {
+                        Button {
+                            isAddingFirstTask = true
+                        } label: {
+                            Label("Görev", systemImage: "plus")
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(Color.ds.inkTertiary)
+                        .help(Text("Görev listesi ekle"))
+                    }
+                }
+                .opacity(isHeaderHovered ? 1 : 0)
+                .animation(.easeOut(duration: 0.15), value: isHeaderHovered)
+            }
         }
         .textStyle(.caption)
-        .foregroundStyle(Color.ds.inkSecondary)
+        .foregroundStyle(Color.ds.inkTertiary)
+        .contentShape(Rectangle())
+        .onHover { isHeaderHovered = $0 }
     }
 
     private var dueDateButton: some View {
@@ -219,7 +245,7 @@ struct NoteEditorView: View {
                 .labelStyle(DueLabelStyle())
                 .foregroundStyle(note.isOverdue(now: now) ? Color.ds.statusBlocked : Color.ds.inkSecondary)
             } else {
-                Text("Hedef ekle")
+                Label("Hedef", systemImage: "calendar")
                     .foregroundStyle(Color.ds.inkTertiary)
             }
         }

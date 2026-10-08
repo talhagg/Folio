@@ -5,7 +5,7 @@
 Bir güvenlik açığı bulursanız lütfen herkese açık issue açmak yerine GitHub'daki
 **Security → Report a vulnerability** (özel bildirim) özelliğini kullanın.
 
-## Güvenlik incelemesi — v0.4 (8 Ekim 2026)
+## Güvenlik incelemesi — v0.5 (8 Ekim 2026)
 
 ### Tehdit yüzeyi
 

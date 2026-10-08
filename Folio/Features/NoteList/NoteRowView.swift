@@ -9,10 +9,53 @@ struct NoteRowView: View {
     /// Boş değilse başlık ve önizlemedeki eşleşmeler vurgulanır.
     var searchText = ""
     var onTogglePin: (() -> Void)? = nil
+    /// `nil` → kullanıcı ayarı (Ayarlar › Not listesi).
+    var density: ListDensity? = nil
 
+    @AppStorage(ListDensity.storageKey) private var densityRaw = ListDensity.detailed.rawValue
     @State private var isHovered = false
 
+    private var effectiveDensity: ListDensity {
+        density ?? ListDensity(rawValue: densityRaw) ?? .detailed
+    }
+
     var body: some View {
+        // Arama sırasında eşleşme özeti her zaman gösterilir.
+        if effectiveDensity == .compact && searchText.isEmpty {
+            compactBody
+        } else {
+            detailedBody
+        }
+    }
+
+    /// Sade satır: başlık, iğne, tarih — tek satır.
+    private var compactBody: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Metrics.Spacing.s2) {
+            Text(note.title.isEmpty ? String(localized: "Başlıksız not") : note.title)
+                .textStyle(.body)
+                .foregroundStyle(note.title.isEmpty ? Color.ds.inkTertiary : Color.ds.ink)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+            pinButton
+            Group {
+                if let deletedAt = note.deletedAt {
+                    let days = Trash.daysRemaining(deletedAt: deletedAt, now: now)
+                    Text(days == 0 ? "Bugün" : "\(days) gün")
+                } else {
+                    Text(DateGrouping.rowDateText(for: note.updatedAt, now: now))
+                }
+            }
+            .textStyle(.caption)
+            .foregroundStyle(note.isOverdue(now: now) ? Color.ds.statusBlocked : Color.ds.inkTertiary)
+            .monospacedDigit()
+        }
+        .padding(.horizontal, Metrics.Spacing.s3)
+        .frame(height: Metrics.Layout.rowHeight + 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .onHover { isHovered = $0 }
+    }
+
+    private var detailedBody: some View {
         VStack(alignment: .leading, spacing: Metrics.Spacing.s1) {
             HStack(alignment: .firstTextBaseline, spacing: Metrics.Spacing.s2) {
                 Text(SearchHighlighter.attributed(

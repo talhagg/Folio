@@ -55,10 +55,11 @@ enum CalendarAgenda {
 
 /// Liste sütununda ay takvimi; seçili günün not ve görev hedefleri altta.
 struct CalendarView: View {
+    /// Seçili kapsamın notları.
+    let notes: [Note]
     @Binding var selectedNoteID: UUID?
     var now: Date = .now
 
-    @Query private var notes: [Note]
     @State private var month = Calendar.current.startOfDay(for: .now)
     @State private var selectedDay = Calendar.current.startOfDay(for: .now)
 

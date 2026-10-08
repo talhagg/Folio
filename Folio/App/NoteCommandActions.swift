@@ -20,6 +20,11 @@ struct NoteCommandActions {
     var openSticky: (@MainActor () -> Void)?
     var newSticky: @MainActor () -> Void
     var newFromTemplate: @MainActor (NoteTemplate) -> Void
+    var viewMode: ViewMode = .list
+    var setViewMode: @MainActor (ViewMode) -> Void
+    var isFocusMode = false
+    var toggleFocusMode: @MainActor () -> Void
+    var showCommandPalette: @MainActor () -> Void
 }
 
 struct NoteCommandActionsKey: FocusedValueKey {

@@ -623,10 +623,7 @@ struct EditorFormatBar: View {
 
             divider
 
-            barButton("list.bullet", help: "Madde listesi", isOn: currentStyle == .bullet) { controller.setLineStyle(.bullet) }
-            barButton("checklist", help: "Görev listesi", isOn: currentStyle == .task) { controller.setLineStyle(.task) }
-            barButton("list.number", help: "Numaralı liste", isOn: currentStyle == .numbered) { controller.setLineStyle(.numbered) }
-            barButton("text.quote", help: "Alıntı", isOn: currentStyle == .quote) { controller.setLineStyle(.quote) }
+            listMenu
 
             divider
 
@@ -658,6 +655,42 @@ struct EditorFormatBar: View {
         .overlay(alignment: .bottom) {
             Rectangle().fill(Color.ds.separator).frame(height: 1)
         }
+    }
+
+    private static let listStyles: [(MarkdownLineStyle, String)] = [
+        (.bullet, "list.bullet"), (.task, "checklist"), (.numbered, "list.number"), (.quote, "text.quote"),
+    ]
+
+    /// Madde, görev, numaralı liste ve alıntı tek menüde; simge mevcut satırın türünü gösterir.
+    private var listMenu: some View {
+        let current = Self.listStyles.first { $0.0 == currentStyle }
+        return Menu {
+            ForEach(Self.listStyles, id: \.0) { style, symbol in
+                Button {
+                    controller.setLineStyle(style)
+                } label: {
+                    Label(style.title, systemImage: style == currentStyle ? "checkmark" : symbol)
+                }
+            }
+        } label: {
+            HStack(spacing: 2) {
+                Image(systemName: current?.1 ?? "list.bullet")
+                    .font(.system(size: 13, weight: .medium))
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 7, weight: .bold))
+                    .foregroundStyle(Color.ds.inkTertiary)
+            }
+            .foregroundStyle(current == nil ? Color.ds.ink : Color.ds.accent)
+            .frame(width: 38, height: 26)
+            .background(current == nil ? Color.clear : Color.ds.accentSoft, in: RoundedRectangle(cornerRadius: Metrics.Radius.md - 1))
+            .contentShape(Rectangle())
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .focusable(false)
+        .help(Text("Liste ve alıntı"))
     }
 
     private var divider: some View {

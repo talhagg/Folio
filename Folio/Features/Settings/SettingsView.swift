@@ -19,6 +19,7 @@ struct GeneralSettingsView: View {
     @AppStorage(Reminders.enabledKey) private var remindersEnabled = true
     @AppStorage(Reminders.hourKey) private var reminderHour = 9
     @AppStorage(QuickActions.hotKeyEnabledKey) private var hotKeyEnabled = true
+    @AppStorage(ListDensity.storageKey) private var densityRaw = ListDensity.detailed.rawValue
 
     var body: some View {
         Form {
@@ -26,6 +27,13 @@ struct GeneralSettingsView: View {
                 Picker("Tema", selection: $theme.appearance) {
                     ForEach(AppearanceMode.allCases) { mode in
                         Text(mode.title).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                Picker("Not listesi", selection: $densityRaw) {
+                    ForEach(ListDensity.allCases) { density in
+                        Text(density.title).tag(density.rawValue)
                     }
                 }
                 .pickerStyle(.segmented)

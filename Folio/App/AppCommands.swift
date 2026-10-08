@@ -1,7 +1,8 @@
 import AppKit
 import SwiftUI
 
-/// Menü komutları: ⌘N yeni not, ⇧⌘N yeni defter, ⌘⌫ sil (onaylı), ⌘P sabitle, ⌘1–4 akıllı filtreler, ⌘F ara.
+/// Menü komutları: ⌘N yeni not, ⇧⌘N yeni defter, ⌘⌫ sil (onaylı), ⌘P sabitle, ⌘1–4 akıllı filtreler, ⌘F ara,
+/// ⌃⌘1–3 liste/pano/takvim, ⌘. odak modu, ⌘K komut paleti.
 struct AppCommands: Commands {
     @FocusedValue(\.noteActions) private var actions
     @AppStorage(EditorTextSize.storageKey) private var textSizeRaw = EditorTextSize.normal.rawValue
@@ -103,6 +104,21 @@ struct AppCommands: Commands {
         }
 
         CommandGroup(after: .sidebar) {
+            Divider()
+            ForEach(Array(ViewMode.allCases.enumerated()), id: \.element) { index, mode in
+                Toggle(mode.title, isOn: Binding(
+                    get: { actions?.viewMode == mode },
+                    set: { if $0 { actions?.setViewMode(mode) } }
+                ))
+                .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: [.command, .control])
+                .disabled(actions == nil)
+            }
+            Button(actions?.isFocusMode == true ? "Odak Modundan Çık" : "Odak Modu") { actions?.toggleFocusMode() }
+                .keyboardShortcut(".", modifiers: .command)
+                .disabled(actions == nil)
+            Button("Komut Paleti…") { actions?.showCommandPalette() }
+                .keyboardShortcut("k", modifiers: .command)
+                .disabled(actions == nil)
             Divider()
             ForEach(Array(SmartFilter.allCases.enumerated()), id: \.element) { index, filter in
                 Button(filter.title) { actions?.selectSmartFilter(filter) }

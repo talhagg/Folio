@@ -6,6 +6,8 @@ import SwiftUI
 struct TaskListView: View {
     @Bindable var note: Note
     var now: Date = .now
+    /// Görünür olunca ilk görevi ekleyip odaklar ("+ Görev").
+    var startsAdding = false
 
     @Environment(\.modelContext) private var context
     @FocusState private var focusedTaskID: UUID?
@@ -55,6 +57,9 @@ struct TaskListView: View {
                 withAnimation(.snappy(duration: 0.2)) { note.moveTask(id, before: nil) }
                 return true
             }
+        }
+        .onAppear {
+            if startsAdding && note.taskCount == 0 { addTask(after: nil) }
         }
     }
 

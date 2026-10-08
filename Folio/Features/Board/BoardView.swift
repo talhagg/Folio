@@ -3,18 +3,14 @@ import SwiftUI
 
 /// Pano: notlar durum sütunlarında; kart sürüklenerek durum değiştirilir.
 struct BoardView: View {
+    /// Kenar çubuğunda seçili kapsamın notları (defter, bölüm, etiket, filtre).
+    let notes: [Note]
+    var scopeTitle: String = ""
     var onOpen: (Note) -> Void = { _ in }
 
-    @Query(sort: \Note.updatedAt, order: .reverse) private var notes: [Note]
-    @Query(sort: \Notebook.sortIndex) private var notebooks: [Notebook]
-    @State private var notebookFilter: UUID?
     @State private var dropTarget: NoteStatus?
 
-    private var visibleNotes: [Note] {
-        notes.filter { note in
-            !note.isTrashed && (notebookFilter == nil || note.notebook?.id == notebookFilter)
-        }
-    }
+    private var visibleNotes: [Note] { notes.filter { !$0.isTrashed } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -37,21 +33,16 @@ struct BoardView: View {
 
     private var header: some View {
         HStack(spacing: Metrics.Spacing.s3) {
-            Text("Pano")
+            Text(scopeTitle.isEmpty ? String(localized: "Pano") : scopeTitle)
                 .textStyle(.noteHeading)
                 .foregroundStyle(Color.ds.ink)
-            Text("Kartları sürükleyerek durumu değiştirin")
+            Text("\(visibleNotes.count) not")
                 .textStyle(.caption)
                 .foregroundStyle(Color.ds.inkTertiary)
             Spacer()
-            Picker("Defter", selection: $notebookFilter) {
-                Text("Tüm defterler").tag(UUID?.none)
-                ForEach(notebooks) { notebook in
-                    Text(notebook.name).tag(UUID?.some(notebook.id))
-                }
-            }
-            .fixedSize()
-            .labelsHidden()
+            Text("Kartları sürükleyerek durumu değiştirin")
+                .textStyle(.caption)
+                .foregroundStyle(Color.ds.inkTertiary)
         }
         .padding(.horizontal, Metrics.Spacing.s4)
         .padding(.vertical, Metrics.Spacing.s3)

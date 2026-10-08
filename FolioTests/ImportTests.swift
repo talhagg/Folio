@@ -300,3 +300,11 @@ struct URLImportTests {
         #expect(ConfluenceCredentials(site: "wiki.sirket.com", email: "", token: "pat").authorizationHeader() == "Bearer pat")
     }
 }
+
+struct WebPageTitleTests {
+    @Test func cleansConfluenceTitles() {
+        #expect(WebPage.cleanTitle("Sprint Plan - Mühendislik - Confluence") == "Sprint Plan")
+        #expect(WebPage.cleanTitle("Örnek Sayfa") == "Örnek Sayfa")
+        #expect(WebPage.cleanTitle("  ") == nil)
+    }
+}

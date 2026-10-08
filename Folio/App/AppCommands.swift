@@ -45,7 +45,7 @@ struct AppCommands: Commands {
 
         // Standart Bul menüsü yerine notlarda arama (⌘F).
         CommandGroup(replacing: .textEditing) {
-            Button("Notlarda Ara") { SearchFieldFocuser.focus() }
+            Button("Notlarda Ara") { actions?.focusSearch() }
                 .keyboardShortcut("f", modifiers: .command)
         }
 
@@ -97,31 +97,5 @@ struct AppCommands: Commands {
                     .disabled(actions == nil)
             }
         }
-    }
-}
-
-/// macOS 14'te SwiftUI arama alanına odak veren bir API yok (`searchFocused` macOS 15+);
-/// bu yüzden toolbar'daki arama öğesine AppKit üzerinden ulaşılır.
-@MainActor
-enum SearchFieldFocuser {
-    static func focus(in window: NSWindow? = NSApp.keyWindow ?? NSApp.mainWindow) {
-        guard let window else { return }
-        if let item = window.toolbar?.items.lazy.compactMap({ $0 as? NSSearchToolbarItem }).first {
-            item.beginSearchInteraction()
-            return
-        }
-        // Yedek: başlık çubuğu hiyerarşisindeki ilk NSSearchField.
-        let root = window.contentView?.superview ?? window.contentView
-        if let field = root.flatMap(firstSearchField(in:)) {
-            window.makeFirstResponder(field)
-        }
-    }
-
-    private static func firstSearchField(in view: NSView) -> NSSearchField? {
-        if let field = view as? NSSearchField { return field }
-        for subview in view.subviews {
-            if let field = firstSearchField(in: subview) { return field }
-        }
-        return nil
     }
 }

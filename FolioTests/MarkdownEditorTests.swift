@@ -228,3 +228,67 @@ struct TypingFlowTests {
         #expect(!after.fontDescriptor.symbolicTraits.contains(.bold))
     }
 }
+
+/// Kalın/italik yazarken boşluk: yazma sırasında biçim korunmalı, kayıtta boşluk dışarı taşınmalı.
+@MainActor
+struct EmphasisSpacingTests {
+    private func isHidden(_ storage: NSTextStorage, at index: Int) -> Bool {
+        let font = storage.attribute(.font, at: index, effectiveRange: nil) as? NSFont
+        return (font?.pointSize ?? 99) < 1
+    }
+
+    private func isBold(_ storage: NSTextStorage, at index: Int) -> Bool {
+        let font = storage.attribute(.font, at: index, effectiveRange: nil) as? NSFont
+        return font?.fontDescriptor.symbolicTraits.contains(.bold) == true
+    }
+
+    @Test func trailingSpaceInsideBoldKeepsStarsHidden() {
+        let storage = NSTextStorage(string: "a **kalın **")
+        MarkdownStyler.style(storage, scale: 1)
+        #expect(isHidden(storage, at: 2) && isHidden(storage, at: 3))
+        #expect(isHidden(storage, at: 10) && isHidden(storage, at: 11))
+        #expect(isBold(storage, at: 5))
+    }
+
+    @Test func typingSpaceThenWordInBoldModeStaysBold() throws {
+        let controller = MarkdownEditorController()
+        let coordinator = MarkdownTextEditor(text: .constant(""), scale: 1, controller: controller).makeCoordinator()
+        let textView = NSTextView(usingTextLayoutManager: false)
+        textView.isRichText = false
+        textView.delegate = coordinator
+        controller.attach(textView)
+        textView.insertText("a ", replacementRange: textView.selectedRange())
+        controller.toggleInline("**")
+        textView.insertText("kalın", replacementRange: textView.selectedRange())
+        textView.insertText(" ", replacementRange: textView.selectedRange())
+        let storage = try #require(textView.textStorage)
+        #expect(textView.string == "a **kalın **")
+        #expect(isHidden(storage, at: 10))
+        textView.insertText("yazı", replacementRange: textView.selectedRange())
+        #expect(textView.string == "a **kalın yazı**")
+        #expect(isBold(storage, at: 10))
+    }
+
+    @Test(arguments: [
+        ("**kalın **", "**kalın** "),
+        ("** kalın**", " **kalın**"),
+        ("x *eğik * y", "x *eğik*  y"),
+        ("a **** b", "a  b"),
+        ("5 * 3 * 2", "5 * 3 * 2"),
+        ("**tamam**", "**tamam**"),
+        ("`kod ` ve **a **", "`kod ` ve **a** "),
+    ])
+    func normalizesEmphasisSpacing(input: String, expected: String) {
+        #expect(MarkdownNormalizer.emphasisSpacing(input) == expected)
+    }
+
+    @Test func normalizerSkipsCodeBlocks() {
+        let text = "```\n**a **\n```\n**b **"
+        #expect(MarkdownNormalizer.emphasisSpacing(text) == "```\n**a **\n```\n**b** ")
+    }
+
+    @Test func previewRendersTrailingSpaceBoldAsBold() {
+        let attributed = MarkdownBodyView.inline("**kalın **")
+        #expect(String(attributed.characters).contains("*") == false)
+    }
+}

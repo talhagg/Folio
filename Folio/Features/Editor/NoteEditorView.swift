@@ -6,7 +6,6 @@ struct NoteEditorView: View {
     @Bindable var note: Note
     var now: Date = .now
     var onDeletePermanently: (() -> Void)? = nil
-    var onExport: ((ExportFormat) -> Void)? = nil
     /// Testler için: gövde düzenleme modunda açılır.
     var startsEditingBody = false
 
@@ -102,44 +101,13 @@ struct NoteEditorView: View {
             }
         }
         .animation(.snappy(duration: 0.2), value: isEditingBody)
+        // Yazma bitince geçici biçim hatalarını (ör. `**kalın **`) düzelt.
+        .onChange(of: isEditingBody) { wasEditing, isEditing in
+            if wasEditing && !isEditing { normalizeBody() }
+        }
+        .onDisappear { if isEditingBody { normalizeBody() } }
         .sheet(item: $tableSheet) { sheet in
             tableEditor(sheet)
-        }
-        .toolbar {
-            if let onExport {
-                ToolbarItem {
-                    Menu {
-                        ForEach(ExportFormat.allCases) { format in
-                            Button { onExport(format) } label: {
-                                Label("\(format.title) olarak…", systemImage: format.symbolName)
-                            }
-                        }
-                    } label: {
-                        Label("Dışa Aktar", systemImage: "square.and.arrow.up")
-                    }
-                    .help(Text("Notu dışa aktar: PDF, Word, Markdown, JSON"))
-                }
-            }
-            if !note.isTrashed {
-            ToolbarItem {
-                Button {
-                    tableSheet = .new
-                } label: {
-                    Label("Tablo Ekle", systemImage: "tablecells.badge.ellipsis")
-                }
-                .help(Text("Tablo ekle (⌥⌘T)"))
-                .keyboardShortcut("t", modifiers: [.command, .option])
-            }
-            ToolbarItem {
-                Button {
-                    note.isPinned.toggle()
-                    note.touch()
-                } label: {
-                    Label(note.isPinned ? "Sabitlemeyi Kaldır" : "Sabitle", systemImage: note.isPinned ? "pin.slash" : "pin")
-                }
-                .help(Text(note.isPinned ? "Sabitlemeyi kaldır" : "Sabitle"))
-            }
-            }
         }
     }
 
@@ -318,6 +286,11 @@ struct NoteEditorView: View {
 
     private func endEditingBody() {
         isEditingBody = false
+    }
+
+    private func normalizeBody() {
+        let normalized = MarkdownNormalizer.emphasisSpacing(note.body)
+        if normalized != note.body { note.body = normalized }
     }
 }
 

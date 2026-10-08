@@ -29,14 +29,14 @@
 - Klavyeyle gezinme, pencere ve sütun genişliklerini hatırlama.
 - Üçüncü parti bağımlılık yok: Swift 6, SwiftUI, SwiftData.
 
-### Confluence
+### Web sayfaları ve Confluence
 
-Ayarlar (⌘,) → **İçe Aktarma**'ya sitenizi ve token'ınızı girin:
+URL'den içe aktarırken sayfa uygulamanın içinde açılır; giriş gerekiyorsa orada oturum açıp
+**Bu Sayfayı İçe Aktar**'a basarsınız. Token gerekmez.
 
-- **Cloud** (`*.atlassian.net`): e-posta + [API token](https://id.atlassian.com/manage-profile/security/api-tokens).
-- **Server / Data Center:** e-postayı boş bırakıp kişisel erişim token'ı (PAT) girin.
-
-Token Keychain'de saklanır ve yalnızca girilen siteye giden isteklere eklenir. Herkese açık sayfalar token gerektirmez.
+İsteğe bağlı: bir Confluence sayfasını **alt sayfalarıyla birlikte** toplu almak için Ayarlar (⌘,) → **İçe Aktarma**'ya
+sitenizi ve token'ınızı girin (Cloud: e-posta + [API token](https://id.atlassian.com/manage-profile/security/api-tokens);
+Server/Data Center: kişisel erişim token'ı). Token Keychain'de saklanır ve yalnızca o siteye gönderilir.
 
 ## Kurulum (DMG)
 
@@ -48,7 +48,7 @@ Folio, Developer ID ile imzalı ve Apple tarafından notarize edilmiştir; ek bi
 İndirilen dosyanın bütünlüğünü sürüm notlarındaki SHA-256 ile doğrulayabilirsiniz:
 
 ```bash
-shasum -a 256 Folio-0.3.dmg
+shasum -a 256 Folio-0.3.1.dmg
 ```
 
 > iCloud senkronu için Mac'te iCloud'a giriş yapılmış ve **Sistem Ayarları → Apple Hesabı → iCloud**'da

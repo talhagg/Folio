@@ -156,14 +156,24 @@ struct ThemePicker: View {
                 .textStyle(.headline)
                 .foregroundStyle(Color.ds.ink)
                 .padding(.top, Metrics.Spacing.s1)
-            HStack(spacing: Metrics.Spacing.s2 + 2) {
-                ForEach(AccentTheme.allCases) { theme in
-                    swatch(theme)
-                }
-            }
+            AccentSwatches(store: store)
             Text(store.accent.title)
                 .textStyle(.caption)
                 .foregroundStyle(Color.ds.inkSecondary)
+        }
+    }
+}
+
+/// Vurgu rengi daireleri (tema seçici ve Ayarlar).
+struct AccentSwatches: View {
+    @Bindable var store = ThemeStore.shared
+    var size: CGFloat = 26
+
+    var body: some View {
+        HStack(spacing: Metrics.Spacing.s2 + 2) {
+            ForEach(AccentTheme.allCases) { theme in
+                swatch(theme)
+            }
         }
     }
 
@@ -174,7 +184,7 @@ struct ThemePicker: View {
         } label: {
             Circle()
                 .fill(theme.palette.accent)
-                .frame(width: 26, height: 26)
+                .frame(width: size, height: size)
                 .overlay {
                     if isSelected {
                         Image(systemName: "checkmark")

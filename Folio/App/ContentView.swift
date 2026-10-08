@@ -25,6 +25,7 @@ struct ContentView: View {
         var fileName: String
     }
     @State private var isThemePickerShown = false
+    @FocusState private var isSearchFocused: Bool
 
     private let sidebarWidth = WindowLayout.storedWidth(
         WindowLayout.sidebarWidthKey,
@@ -108,9 +109,30 @@ struct ContentView: View {
         }
         .navigationTitle(title)
         .navigationSubtitle(subtitle)
-        .searchable(text: $searchText, placement: .toolbar, prompt: Text("Notlarda ara"))
+        // Toolbar tek yerde ve sabit: içerik değişince öğeler kaybolup kaymasın, kullanılamayanlar soluklaşsın.
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
+            ToolbarItemGroup(placement: .primaryAction) {
+                ToolbarSearchField(text: $searchText, isFocused: $isSearchFocused)
+
+                Menu {
+                    ForEach(ExportFormat.allCases) { format in
+                        Button {
+                            if let selectedNote { export([selectedNote], as: format) }
+                        } label: {
+                            Label("\(format.title) olarak…", systemImage: format.symbolName)
+                        }
+                        .disabled(selectedNote == nil)
+                    }
+                    Divider()
+                    Button("Tüm Notlar (JSON)…") {
+                        export(allNotes.filter { !$0.isTrashed }, as: .json, fallbackName: String(localized: "Folio Yedek"))
+                    }
+                } label: {
+                    Label("Dışa Aktar", systemImage: "square.and.arrow.up")
+                }
+                .menuIndicator(.hidden)
+                .help(Text("Dışa aktar: PDF, Word, Markdown, JSON"))
+
                 Button {
                     isThemePickerShown.toggle()
                 } label: {
@@ -122,15 +144,14 @@ struct ContentView: View {
                         .padding(Metrics.Spacing.s4)
                         .frame(width: 300)
                 }
-            }
-            ToolbarItem(placement: .primaryAction) {
+
                 Button { addNote() } label: {
-                    Label("Yeni Not", systemImage: "plus")
+                    Label("Yeni Not", systemImage: "square.and.pencil")
                         .labelStyle(.titleAndIcon)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Color.ds.accent)
-                .help(Text("Yeni not oluştur (⌘N)"))
+                .help(Text("Yeni not (⌘N)"))
             }
         }
         .focusedSceneValue(\.noteActions, commandActions)
@@ -202,8 +223,7 @@ struct ContentView: View {
         if let selectedNote {
             NoteEditorView(
                 note: selectedNote,
-                onDeletePermanently: { deleteRequest = selectedNote },
-                onExport: { export([selectedNote], as: $0) }
+                onDeletePermanently: { deleteRequest = selectedNote }
             )
                 // Not değişince editör sıfırlansın; yoksa alanların onChange'i yeni notu "düzenlenmiş" sayar.
                 .id(selectedNote.id)
@@ -308,6 +328,7 @@ struct ContentView: View {
                 searchText = ""
                 selection = .smart(filter)
             },
+            focusSearch: { isSearchFocused = true },
             importFiles: { isFileImporterShown = true },
             importURL: { isURLImportShown = true },
             exportNote: exportNote,

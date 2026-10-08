@@ -1,58 +1,62 @@
 import SwiftData
 import SwiftUI
 
-/// URL'den içe aktarma sayfası.
+/// URL'den içe aktarma. Dosya adresleri doğrudan indirilir; web sayfaları (Confluence dahil) pencerenin
+/// içinde açılır — gerekirse kullanıcı orada giriş yapar — ve "Bu Sayfayı İçe Aktar" ile nota çevrilir.
+/// Kayıtlı Confluence token'ı varsa sayfa API'den (istenirse alt sayfalarıyla) alınır.
 struct URLImportView: View {
     /// Başarılı içe aktarmadan sonra oluşan bölümle çağrılır.
     let onImported: (NoteSection, Int) -> Void
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.openSettings) private var openSettings
     @State private var address = ""
     @State private var includeChildPages = false
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var task: Task<Void, Never>?
+    @State private var page: WebPage?
 
     private var url: URL? { URLImporter.validatedURL(address) }
     private var confluence: ConfluenceLink? { url.flatMap(ConfluenceLink.parse) }
+    private var credentialsApply: Bool {
+        guard let confluence else { return false }
+        return ConfluenceCredentials.load()?.applies(to: confluence.baseURL) == true
+    }
+
+    static let fileExtensions: Set<String> = ["json", "csv", "tsv", "xlsx", "docx", "md", "markdown", "txt"]
 
     var body: some View {
+        Group {
+            if let page {
+                browser(page)
+            } else {
+                addressForm
+            }
+        }
+        .animation(.snappy(duration: 0.2), value: page != nil)
+    }
+
+    // MARK: - Adres
+
+    private var addressForm: some View {
         VStack(alignment: .leading, spacing: Metrics.Spacing.s3) {
             Text("URL'den İçe Aktar")
                 .textStyle(.windowTitle)
                 .foregroundStyle(Color.ds.ink)
-            Text("Confluence sayfası, web sayfası ya da JSON, CSV, Excel, Word, Markdown dosyası adresi.")
+            Text("Web sayfası, Confluence sayfası ya da JSON, CSV, Excel, Word, Markdown dosyası adresi.")
                 .textStyle(.callout)
                 .foregroundStyle(Color.ds.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            TextField("https://sirket.atlassian.net/wiki/spaces/…", text: $address)
+            TextField("https://…", text: $address)
                 .textFieldStyle(.roundedBorder)
                 .onSubmit(start)
                 .disabled(isLoading)
 
-            if let confluence {
-                VStack(alignment: .leading, spacing: Metrics.Spacing.s2) {
-                    Label(
-                        confluence.deployment == .cloud ? "Confluence Cloud sayfası" : "Confluence Server sayfası",
-                        systemImage: "doc.text.magnifyingglass"
-                    )
-                    .textStyle(.caption)
-                    .foregroundStyle(Color.ds.accent)
-                    Toggle("Alt sayfaları da içe aktar (en fazla \(URLImporter.maxPages))", isOn: $includeChildPages)
-                        .textStyle(.callout)
-                    if ConfluenceCredentials.load()?.applies(to: confluence.baseURL) != true {
-                        HStack(spacing: Metrics.Spacing.s1) {
-                            Text("Herkese açık olmayan sayfalar için API token gerekir.")
-                                .foregroundStyle(Color.ds.inkSecondary)
-                            Button("Ayarlar…") { openSettings() }
-                                .buttonStyle(.link)
-                        }
-                        .textStyle(.caption)
-                    }
-                }
+            if confluence != nil, credentialsApply {
+                Toggle("Alt sayfaları da içe aktar (en fazla \(URLImporter.maxPages))", isOn: $includeChildPages)
+                    .textStyle(.callout)
             }
 
             if let errorMessage {
@@ -75,7 +79,7 @@ struct URLImportView: View {
                     dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
-                Button("İçe Aktar", action: start)
+                Button(goButtonTitle, action: start)
                     .keyboardShortcut(.defaultAction)
                     .buttonStyle(.borderedProminent)
                     .tint(Color.ds.accent)
@@ -86,26 +90,135 @@ struct URLImportView: View {
         .frame(width: 480)
     }
 
+    private var isFileURL: Bool {
+        guard let url else { return false }
+        return Self.fileExtensions.contains(url.pathExtension.lowercased())
+    }
+
+    private var goButtonTitle: LocalizedStringKey {
+        isFileURL || credentialsApply ? "İçe Aktar" : "Sayfayı Aç"
+    }
+
     private func start() {
         guard let url, !isLoading else { return }
-        isLoading = true
         errorMessage = nil
+        // Web sayfası: uygulama içinde aç, kullanıcı gerekirse giriş yapsın.
+        guard isFileURL || credentialsApply else {
+            page = WebPage(url: url)
+            return
+        }
+        isLoading = true
         let importer = URLImporter(credentials: ConfluenceCredentials.load())
         let includeChildPages = includeChildPages
         task = Task {
             do {
                 let result = try await importer.documents(from: url, includeChildPages: includeChildPages)
-                if let section = context.importDocuments(result.documents, sourceName: result.sourceName) {
-                    onImported(section, result.documents.count)
-                    dismiss()
-                } else {
-                    errorMessage = ImportError.empty.localizedDescription
-                }
+                finish(result.documents, sourceName: result.sourceName)
             } catch is CancellationError {
             } catch {
-                errorMessage = error.localizedDescription
+                // Token reddedildiyse ya da dosya indirilemediyse sayfayı tarayıcıda dene.
+                if !isFileURL {
+                    page = WebPage(url: url)
+                } else {
+                    errorMessage = error.localizedDescription
+                }
             }
             isLoading = false
+        }
+    }
+
+    private func finish(_ documents: [ImportedDocument], sourceName: String) {
+        if let section = context.importDocuments(documents, sourceName: sourceName) {
+            onImported(section, documents.count)
+            dismiss()
+        } else {
+            errorMessage = ImportError.empty.localizedDescription
+        }
+    }
+
+    // MARK: - Tarayıcı
+
+    private func browser(_ page: WebPage) -> some View {
+        VStack(spacing: 0) {
+            HStack(spacing: Metrics.Spacing.s2) {
+                Button { page.webView.goBack() } label: { Image(systemName: "chevron.left") }
+                    .disabled(!page.canGoBack)
+                    .help(Text("Geri"))
+                Button { page.webView.reload() } label: { Image(systemName: "arrow.clockwise") }
+                    .help(Text("Yenile"))
+                HStack(spacing: 6) {
+                    Image(systemName: page.url?.scheme == "https" ? "lock.fill" : "globe")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Color.ds.inkTertiary)
+                    Text(page.url?.host() ?? address)
+                        .textStyle(.callout)
+                        .foregroundStyle(Color.ds.inkSecondary)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                    if page.isLoading { ProgressView().controlSize(.small) }
+                }
+                .padding(.horizontal, Metrics.Spacing.s2)
+                .frame(height: 26)
+                .background(Color.ds.surfaceHover.opacity(0.6), in: RoundedRectangle(cornerRadius: Metrics.Radius.md))
+
+                Button("Vazgeç") {
+                    self.page = nil
+                    dismiss()
+                }
+                .keyboardShortcut(.cancelAction)
+                Button {
+                    importCurrentPage(page)
+                } label: {
+                    Label("Bu Sayfayı İçe Aktar", systemImage: "square.and.arrow.down")
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color.ds.accent)
+                .keyboardShortcut(.defaultAction)
+                .disabled(page.isLoading || isLoading)
+            }
+            .buttonStyle(.borderless)
+            .padding(.horizontal, Metrics.Spacing.s3)
+            .padding(.vertical, Metrics.Spacing.s2)
+
+            Text("Giriş gerekiyorsa sayfada oturum açın; sonra \"Bu Sayfayı İçe Aktar\"a basın.")
+                .textStyle(.caption)
+                .foregroundStyle(Color.ds.inkSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, Metrics.Spacing.s3)
+                .padding(.bottom, Metrics.Spacing.s2)
+
+            if let errorMessage {
+                Label(errorMessage, systemImage: "exclamationmark.triangle")
+                    .textStyle(.caption)
+                    .foregroundStyle(Color.ds.statusBlocked)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, Metrics.Spacing.s3)
+                    .padding(.bottom, Metrics.Spacing.s2)
+            }
+
+            Rectangle().fill(Color.ds.separator).frame(height: 1)
+            WebView(page: page)
+        }
+        .frame(width: 980, height: 720)
+    }
+
+    private func importCurrentPage(_ page: WebPage) {
+        isLoading = true
+        errorMessage = nil
+        Task {
+            defer { isLoading = false }
+            do {
+                let snapshot = try await page.contentSnapshot()
+                let result = HTMLToMarkdown.convert(html: snapshot.html)
+                let title = WebPage.cleanTitle(snapshot.title) ?? result.title ?? page.url?.host() ?? "URL"
+                guard !result.markdown.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    errorMessage = ImportError.empty.localizedDescription
+                    return
+                }
+                finish([ImportedDocument(title: title, markdown: result.markdown)], sourceName: title)
+            } catch {
+                errorMessage = String(localized: "Sayfa okunamadı: \(error.localizedDescription)")
+            }
         }
     }
 }
@@ -142,106 +255,5 @@ enum FileImportRunner {
             }
         }
         return summary
-    }
-}
-
-/// Ayarlar penceresi (⌘,).
-struct SettingsView: View {
-    var body: some View {
-        TabView {
-            GeneralSettingsView()
-                .tabItem { Label("Genel", systemImage: "paintpalette") }
-            ImportSettingsView()
-                .tabItem { Label("İçe Aktarma", systemImage: "square.and.arrow.down") }
-        }
-        .frame(width: 480)
-        .padding(Metrics.Spacing.s4)
-    }
-}
-
-private struct GeneralSettingsView: View {
-    @AppStorage(EditorTextSize.storageKey) private var textSizeRaw = EditorTextSize.normal.rawValue
-
-    var body: some View {
-        Form {
-            Section {
-                ThemePicker()
-                    .padding(.vertical, Metrics.Spacing.s1)
-            } header: {
-                Text("Tema")
-            }
-            Picker("Not yazı boyutu", selection: $textSizeRaw) {
-                ForEach(EditorTextSize.allCases) { size in
-                    Text(size.title).tag(size.rawValue)
-                }
-            }
-            Text("Not yazarken üstteki biçim çubuğundan ya da ⌘+ / ⌘- ile de değiştirebilirsiniz.")
-                .textStyle(.caption)
-                .foregroundStyle(Color.ds.inkSecondary)
-        }
-    }
-}
-
-private struct ImportSettingsView: View {
-    @State private var site = ""
-    @State private var email = ""
-    @State private var token = ""
-    @State private var status: String?
-    @State private var hasSaved = false
-
-    var body: some View {
-        Form {
-            Section {
-                TextField("Site", text: $site, prompt: Text("sirket.atlassian.net"))
-                TextField("E-posta", text: $email, prompt: Text("Cloud için; Server'da boş bırakın"))
-                SecureField("API token", text: $token)
-            } header: {
-                Text("Confluence")
-            } footer: {
-                VStack(alignment: .leading, spacing: Metrics.Spacing.s1) {
-                    Text("Cloud: id.atlassian.com → Güvenlik → API token oluştur. Server/Data Center: profil → Kişisel erişim token'ları.")
-                    Text("Token Keychain'de saklanır ve yalnızca bu siteye giden isteklere eklenir.")
-                }
-                .textStyle(.caption)
-                .foregroundStyle(Color.ds.inkSecondary)
-            }
-
-            HStack {
-                if let status {
-                    Text(status)
-                        .textStyle(.caption)
-                        .foregroundStyle(Color.ds.inkSecondary)
-                }
-                Spacer()
-                if hasSaved {
-                    Button("Kaldır", role: .destructive) {
-                        ConfluenceCredentials.delete()
-                        site = ""
-                        email = ""
-                        token = ""
-                        hasSaved = false
-                        status = String(localized: "Bilgiler silindi.")
-                    }
-                }
-                Button("Kaydet") {
-                    do {
-                        try ConfluenceCredentials(site: site, email: email, token: token).save()
-                        hasSaved = true
-                        status = String(localized: "Kaydedildi.")
-                    } catch {
-                        status = String(localized: "Kaydedilemedi: \(error.localizedDescription)")
-                    }
-                }
-                .disabled(site.trimmingCharacters(in: .whitespaces).isEmpty || token.isEmpty)
-            }
-        }
-        .onAppear {
-            if let saved = ConfluenceCredentials.load() {
-                site = saved.site
-                email = saved.email
-                token = saved.token
-                hasSaved = true
-            }
-        }
     }
 }

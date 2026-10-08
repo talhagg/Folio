@@ -142,8 +142,8 @@ final class MarkdownEditorController {
     static func spans(_ line: String, marker: String) -> [NSRange] {
         let pattern: String
         switch marker {
-        case "**": pattern = #"\*\*(?=\S)(.+?)(?<=\S)\*\*"#
-        case "*": pattern = #"(?<![*\w])\*(?=[^*\s])([^*]+?)(?<=[^*\s])\*(?![*\w])"#
+        case "**": pattern = #"\*\*(?=\S)(.+?)\*\*"#
+        case "*": pattern = #"(?<![*\w])\*(?=[^*\s])([^*]+?)\*(?![*\w])"#
         default: pattern = "`[^`]+`"
         }
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
@@ -268,7 +268,10 @@ struct MarkdownTextEditor: NSViewRepresentable {
     func updateNSView(_ textView: NSTextView, context: Context) {
         context.coordinator.parent = self
         controller.textView = textView
-        if textView.string != text {
+        // Editör kendi değişikliğini nota yazarken SwiftUI görünümü senkron güncelleyebiliyor ve
+        // bu sırada notun eski metnini okuyor; o anda metni ezmek imleci geri atıyordu.
+        // Yalnızca dışarıdan gelen değişiklikleri (iCloud, geri yükleme…) yansıt.
+        if !context.coordinator.isWritingToModel, textView.string != text {
             let selection = textView.selectedRange()
             textView.string = text
             textView.setSelectedRange(NSRange(location: min(selection.location, (text as NSString).length), length: 0))
@@ -304,6 +307,8 @@ struct MarkdownTextEditor: NSViewRepresentable {
         var parent: MarkdownTextEditor
         var styledScale: CGFloat = 0
         var styledAccent: AccentTheme?
+        /// Metin nota yazılırken true; `updateNSView` bu sırada metni ezmez.
+        var isWritingToModel = false
 
         init(_ parent: MarkdownTextEditor) { self.parent = parent }
 
@@ -318,7 +323,9 @@ struct MarkdownTextEditor: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             restyle(textView)
+            isWritingToModel = true
             parent.text = textView.string
+            isWritingToModel = false
             textView.invalidateIntrinsicContentSize()
         }
 
@@ -459,8 +466,9 @@ enum MarkdownStyler {
         storage.endEditing()
     }
 
-    private static let bold = try! NSRegularExpression(pattern: #"\*\*(?=\S)(.+?)(?<=\S)\*\*"#)
-    private static let italic = try! NSRegularExpression(pattern: #"(?<![*\w])[*_](?=\S)([^*_]+?)(?<=\S)[*_](?![*\w])"#)
+    // Yazarken kapanıştan önceki boşluğa izin verilir (`**kalın **`); kayıtta MarkdownNormalizer düzeltir.
+    private static let bold = try! NSRegularExpression(pattern: #"\*\*(?=\S)(.+?)\*\*"#)
+    private static let italic = try! NSRegularExpression(pattern: #"(?<![*\w])[*_](?=[^*_\s])([^*_]+?)[*_](?![*\w])"#)
     private static let code = try! NSRegularExpression(pattern: #"`([^`]+)`"#)
     /// İçi boş biçim çiftleri (`****`, `**`, ` `` `) ve iç içe boş çiftler.
     private static let emptyStars = try! NSRegularExpression(pattern: #"(?<![*\w])\*{2,}(?![*\w])"#)
@@ -580,7 +588,7 @@ struct EditorFormatBar: View {
 
             divider
 
-            barButton("tablecells", help: "Tablo ekle (⌥⌘T)", action: onInsertTable)
+            barButton("tablecells", help: "Tablo ekle (⌥⌘T)", key: "t", modifiers: [.command, .option], action: onInsertTable)
 
             Spacer(minLength: Metrics.Spacing.s2)
 
@@ -654,13 +662,14 @@ struct EditorFormatBar: View {
     }
 
     private func barButton(
-        _ systemImage: String, help: LocalizedStringKey, key: KeyEquivalent? = nil, isOn: Bool = false,
+        _ systemImage: String, help: LocalizedStringKey, key: KeyEquivalent? = nil,
+        modifiers: EventModifiers = .command, isOn: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         FormatBarButton(systemImage: systemImage, isOn: isOn, action: action)
             .help(Text(help))
             .accessibilityLabel(Text(help))
-            .modifier(OptionalShortcut(key: key))
+            .modifier(OptionalShortcut(key: key, modifiers: modifiers))
     }
 }
 
@@ -691,10 +700,11 @@ private struct FormatBarButton: View {
 
 private struct OptionalShortcut: ViewModifier {
     let key: KeyEquivalent?
+    var modifiers: EventModifiers = .command
 
     func body(content: Content) -> some View {
         if let key {
-            content.keyboardShortcut(key, modifiers: .command)
+            content.keyboardShortcut(key, modifiers: modifiers)
         } else {
             content
         }

@@ -127,6 +127,7 @@ struct MarkdownBodyView: View {
     }
 
     static func inline(_ text: String) -> AttributedString {
+        let text = MarkdownNormalizer.emphasisSpacing(text)
         let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
         return (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
     }

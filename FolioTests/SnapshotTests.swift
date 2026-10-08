@@ -86,6 +86,12 @@ struct SnapshotTests {
         try render(view, size: CGSize(width: 340, height: 220), name: "name-sheet-light", dark: false)
     }
 
+    @Test(arguments: ["light", "dark"])
+    func settings(appearance: String) throws {
+        try render(GeneralSettingsView().frame(width: 520), size: CGSize(width: 520, height: 300), name: "settings-general-\(appearance)", dark: appearance == "dark")
+        try render(ImportSettingsView().frame(width: 520), size: CGSize(width: 520, height: 400), name: "settings-import-\(appearance)", dark: appearance == "dark")
+    }
+
     @Test func themePicker() throws {
         let view = ThemePicker().padding(16).frame(width: 300).background(Color.ds.surfaceRaised)
         try render(view, size: CGSize(width: 300, height: 200), name: "theme-picker-light", dark: false)

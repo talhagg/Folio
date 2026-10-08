@@ -65,21 +65,20 @@ struct NoteListView: View {
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 2) {
+                        // Grup başlıkları (BUGÜN, DÜN…) kaydırırken üste yapışır.
+                        LazyVStack(alignment: .leading, spacing: 2, pinnedViews: .sectionHeaders) {
                             if filter.isTrash {
                                 trashHeader
                             }
                             ForEach(groups) { group in
-                                if !filter.isTrash {
-                                    Text(group.group.title)
-                                    .textStyle(.sectionLabel)
-                                    .foregroundStyle(Color.ds.inkTertiary)
-                                    .padding(.horizontal, Metrics.Spacing.s3)
-                                    .padding(.top, Metrics.Spacing.s4)
-                                    .padding(.bottom, Metrics.Spacing.s1 + 2)
-                                }
-                                ForEach(group.notes) { note in
-                                    row(note)
+                                Section {
+                                    ForEach(group.notes) { note in
+                                        row(note)
+                                    }
+                                } header: {
+                                    if !filter.isTrash {
+                                        groupHeader(group.group.title)
+                                    }
                                 }
                             }
                         }
@@ -98,6 +97,18 @@ struct NoteListView: View {
         .onMoveCommand { direction in
             move(direction, in: groups.flatMap(\.notes))
         }
+    }
+
+    private func groupHeader(_ title: String) -> some View {
+        Text(title)
+            .textStyle(.sectionLabel)
+            .foregroundStyle(Color.ds.inkTertiary)
+            .padding(.horizontal, Metrics.Spacing.s3)
+            .padding(.top, Metrics.Spacing.s4)
+            .padding(.bottom, Metrics.Spacing.s1 + 2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            // Yapışıkken altındaki satırlar görünmesin; yanlara taşan arka plan liste kenarına kadar.
+            .background(Color.ds.windowBg.padding(.horizontal, -Metrics.Spacing.s2))
     }
 
     private var trashHeader: some View {

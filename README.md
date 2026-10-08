@@ -17,7 +17,7 @@
 - **Son Silinenler:** silinen notlar 90 gün saklanır, sonra otomatik silinir; geri yüklenebilir.
 - **Sürükle-bırak:** notları bölümler arasında ya da çöpe taşıma.
 - **Tablolar ve biçimli metin:** not gövdesi markdown; başlıklar, listeler, kod ve tablolar biçimli görünür. Tablo düzenleyici ile satır/sütun ekleyin (⌥⌘T).
-- **Yazarken biçimlendirme:** üstte biçim çubuğu — paragraf stili, kalın/italik/kod, listeler, tablo ve yazı boyutu (13–22 pt, ⌘+ / ⌘- / ⌘0).
+- **Yazarken biçimlendirme:** üstte sabit (sticky) biçim çubuğu — paragraf stili, kalın/italik/kod, listeler, tablo ve yazı boyutu (13–22 pt, ⌘+ / ⌘- / ⌘0). Kaydırınca yerinde kalır ve notun adını gösterir.
 - **İçe aktarma:** JSON, CSV, Excel (.xlsx), Word (.docx), Markdown, TXT, HTML dosyaları (⇧⌘I ya da listeye sürükleyin)
   ve URL'ler (⇧⌘U) — Confluence sayfaları alt sayfalarıyla birlikte. Notlar **İçe Aktarılanlar** defterinde, kaynak başına bir bölümde toplanır.
   Tabloda *başlık/title* sütunu varsa her satır ayrı not olur.
@@ -61,7 +61,7 @@ Folio, Developer ID ile imzalı ve Apple tarafından notarize edilmiştir; ek bi
 İndirilen dosyanın bütünlüğünü sürüm notlarındaki SHA-256 ile doğrulayabilirsiniz:
 
 ```bash
-shasum -a 256 Folio-0.5.dmg
+shasum -a 256 Folio-0.5.1.dmg
 ```
 
 > iCloud senkronu için Mac'te iCloud'a giriş yapılmış ve **Sistem Ayarları → Apple Hesabı → iCloud**'da

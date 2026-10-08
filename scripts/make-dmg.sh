@@ -82,5 +82,6 @@ if [[ $MODE == developer-id ]]; then
   fi
 fi
 
-shasum -a 256 "$DMG" | tee "$DMG.sha256"
+# Yalnızca dosya adı: indirilen klasörde `shasum -c` çalışsın.
+(cd "$(dirname "$DMG")" && shasum -a 256 "$(basename "$DMG")") | tee "$DMG.sha256"
 echo "Hazır: $DMG"

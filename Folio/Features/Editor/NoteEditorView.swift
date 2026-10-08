@@ -22,6 +22,10 @@ struct NoteEditorView: View {
     /// Görevi olmayan notta "+ Görev" ile açılır.
     @State private var isAddingFirstTask = false
     @State private var attachError: String?
+    /// Başlık sabit çubuğun altına kaydı mı (çubukta notun adı gösterilir).
+    @State private var titleMaxY: CGFloat = .infinity
+    @State private var barMaxY: CGFloat = 0
+    private var isTitleScrolledAway: Bool { titleMaxY < barMaxY }
     @AppStorage(EditorTextSize.storageKey) private var textSizeRaw = EditorTextSize.normal.rawValue
 
     private enum Field: Hashable { case title }
@@ -58,6 +62,13 @@ struct NoteEditorView: View {
                     .foregroundStyle(Color.ds.ink)
                     .focused($focus, equals: .title)
                     .onSubmit(beginEditingBody)
+                    .background {
+                        GeometryReader { proxy in
+                            Color.clear
+                                .onAppear { titleMaxY = proxy.frame(in: .global).maxY }
+                                .onChange(of: proxy.frame(in: .global).maxY) { _, y in titleMaxY = y }
+                        }
+                    }
                     .padding(.bottom, Metrics.Spacing.s6)
 
                 if note.taskCount > 0 || note.isBlocked {
@@ -96,17 +107,27 @@ struct NoteEditorView: View {
             if startsEditingBody { isEditingBody = true }
             if note.title.isEmpty && !note.isTrashed && !startsEditingBody { focus = .title }
         }
+        // Sabit (sticky) biçim çubuğu: kaydırınca yerinde kalır; çöpteki notta yok.
         .safeAreaInset(edge: .top, spacing: 0) {
-            if isEditingBody {
+            if !note.isTrashed {
                 EditorFormatBar(
                     controller: editorController,
-                    currentStyle: currentLineStyle,
+                    currentStyle: isEditingBody ? currentLineStyle : .body,
                     textSizeRaw: $textSizeRaw,
+                    isEditing: isEditingBody,
+                    stickyTitle: isTitleScrolledAway ? note.title : nil,
+                    onBeginEditing: beginEditingBody,
                     onInsertTable: { tableSheet = .new },
                     onAttachFile: { isAttachImporterShown = true },
                     onDone: endEditingBody
                 )
-                .transition(.move(edge: .top).combined(with: .opacity))
+                .background {
+                    GeometryReader { proxy in
+                        Color.clear
+                            .onAppear { barMaxY = proxy.frame(in: .global).maxY }
+                            .onChange(of: proxy.frame(in: .global).maxY) { _, y in barMaxY = y }
+                    }
+                }
             }
         }
         .animation(.snappy(duration: 0.2), value: isEditingBody)

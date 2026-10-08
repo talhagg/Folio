@@ -112,4 +112,59 @@ struct FormatBarClickTests {
         #expect(note.body == "merhaba **dünya** **kalın yazı** normal *egik*")
         try snapshot(hosting, "click-flow.png")
     }
+
+    private func findScrollView(in view: NSView) -> NSScrollView? {
+        if let scroll = view as? NSScrollView, scroll.documentView?.frame.height ?? 0 > scroll.contentView.bounds.height { return scroll }
+        for subview in view.subviews { if let found = findScrollView(in: subview) { return found } }
+        return nil
+    }
+
+    /// Biçim çubuğu düzenleme kapalıyken de görünür; B'ye basmak düzenlemeyi başlatıp kalın yazdırır.
+    @Test func boldWhileNotEditingStartsEditing() throws {
+        let container = ModelContainer.folioInMemory()
+        let note = Note(title: "Deneme")
+        container.mainContext.insert(note)
+        note.body = "merhaba"
+        let view = NavigationStack { NoteEditorView(note: note) }.modelContainer(container)
+        let window = NSWindow(contentRect: CGRect(x: 200, y: 200, width: 800, height: 600), styleMask: [.titled], backing: .buffered, defer: false)
+        let hosting = NSHostingView(rootView: view)
+        window.contentView = hosting
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        defer { window.orderOut(nil) }
+        pump(hosting, 1)
+        #expect(findTextView(in: hosting) == nil)
+
+        let local = NSPoint(x: 154, y: hosting.isFlipped ? 20 : hosting.bounds.height - 20)
+        clickAt(hosting.convert(local, to: nil), in: window)
+        pump(hosting, 0.8)
+        let textView = try #require(findTextView(in: hosting))
+        // Test penceresi anahtar olamadığından odağı elle doğrula.
+        if window.firstResponder !== textView { window.makeFirstResponder(textView) }
+        type("yeni", in: window)
+        pump(hosting)
+        #expect(note.body.hasSuffix("**yeni**"))
+    }
+
+    /// Uzun notta aşağı kaydırınca çubuk yerinde kalır ve notun adını gösterir.
+    @Test func stickyBarShowsTitleWhenScrolled() throws {
+        let container = ModelContainer.folioInMemory()
+        let note = Note(title: "Uzun bir not")
+        container.mainContext.insert(note)
+        note.body = (1...80).map { "Satır \($0) — biraz metin." }.joined(separator: "\n\n")
+        let view = NavigationStack { NoteEditorView(note: note) }.modelContainer(container)
+        let window = NSWindow(contentRect: CGRect(x: 200, y: 200, width: 800, height: 500), styleMask: [.titled], backing: .buffered, defer: false)
+        let hosting = NSHostingView(rootView: view)
+        window.contentView = hosting
+        window.makeKeyAndOrderFront(nil)
+        defer { window.orderOut(nil) }
+        pump(hosting, 1)
+
+        let scroll = try #require(findScrollView(in: hosting))
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: 900))
+        scroll.reflectScrolledClipView(scroll.contentView)
+        pump(hosting, 0.8)
+        try snapshot(hosting, "sticky-bar-scrolled.png")
+
+    }
 }

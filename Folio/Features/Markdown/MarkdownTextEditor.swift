@@ -66,6 +66,35 @@ final class MarkdownEditorController {
 
     var isFocused: Bool { textView.map { $0.window?.firstResponder === $0 } ?? false }
 
+    /// Editör henüz açılmamışken istenen biçim eylemleri; metin görünümü pencereye gelince uygulanır.
+    private var pendingActions: [@MainActor () -> Void] = []
+
+    func perform(whenReady action: @escaping @MainActor () -> Void) {
+        if textView?.window != nil {
+            action()
+        } else {
+            pendingActions.append(action)
+        }
+    }
+
+    /// Metin görünümü pencereye eklenene kadar kısa aralıklarla dener.
+    fileprivate func runPendingActions(attempt: Int = 0) {
+        guard !pendingActions.isEmpty else { return }
+        guard textView?.window != nil else {
+            if attempt < 20 {
+                // GCD değil run loop: iç içe çalışan run loop'larda (modal, testler) da tetiklenir.
+                Timer.scheduledTimer(withTimeInterval: 0.05, repeats: false) { [weak self] _ in
+                    MainActor.assumeIsolated { self?.runPendingActions(attempt: attempt + 1) }
+                }
+            }
+            return
+        }
+        focus()
+        let actions = pendingActions
+        pendingActions = []
+        actions.forEach { $0() }
+    }
+
     /// Testler ve önizlemeler için.
     func attach(_ textView: NSTextView) { self.textView = textView }
 
@@ -268,6 +297,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
         textView.string = text
         controller.textView = textView
         context.coordinator.restyle(textView)
+        RunLoop.main.perform { [controller] in MainActor.assumeIsolated { controller.runPendingActions() } }
         return textView
     }
 
@@ -275,6 +305,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
         context.coordinator.parent = self
         controller.textView = textView
         (textView as? FolioTextView)?.onAttach = onAttach
+        RunLoop.main.perform { [controller] in MainActor.assumeIsolated { controller.runPendingActions() } }
         // Editör kendi değişikliğini nota yazarken SwiftUI görünümü senkron güncelleyebiliyor ve
         // bu sırada notun eski metnini okuyor; o anda metni ezmek imleci geri atıyordu.
         // Yalnızca dışarıdan gelen değişiklikleri (iCloud, geri yükleme…) yansıt.
@@ -573,14 +604,30 @@ enum MarkdownStyler {
     }
 }
 
-/// Yazarken üstte duran biçim çubuğu: paragraf stili, kalın/italik/kod, listeler, tablo, yazı boyutu.
+/// Editörün üstünde sabit (sticky) biçim çubuğu: paragraf stili, kalın/italik/kod, listeler, tablo, yazı boyutu.
+/// Not kaydırılsa da yerinde kalır; başlık görünmez olunca ortada notun adı belirir.
+/// Düzenleme kapalıyken bir biçim seçmek düzenlemeyi başlatır ve biçimi imlece uygular.
 struct EditorFormatBar: View {
     let controller: MarkdownEditorController
     let currentStyle: MarkdownLineStyle
     @Binding var textSizeRaw: Int
+    var isEditing = true
+    /// Başlık kaydırılıp görünmez olunca çubukta gösterilir.
+    var stickyTitle: String? = nil
+    var onBeginEditing: () -> Void = {}
     var onInsertTable: () -> Void
     var onAttachFile: () -> Void = {}
     var onDone: () -> Void
+
+    /// Düzenleme kapalıysa önce editörü açar, metin görünümü hazır olunca eylemi uygular.
+    private func edit(_ action: @escaping @MainActor () -> Void) {
+        if isEditing {
+            action()
+        } else {
+            onBeginEditing()
+            controller.perform(whenReady: action)
+        }
+    }
 
     private var textSize: EditorTextSize { EditorTextSize(rawValue: textSizeRaw) ?? .normal }
 
@@ -589,7 +636,7 @@ struct EditorFormatBar: View {
             Menu {
                 ForEach(MarkdownLineStyle.paragraphStyles, id: \.self) { style in
                     Button {
-                        controller.setLineStyle(style)
+                        edit { controller.setLineStyle(style) }
                     } label: {
                         if style == currentStyle { Label(style.title, systemImage: "checkmark") } else { Text(style.title) }
                     }
@@ -617,9 +664,9 @@ struct EditorFormatBar: View {
 
             divider
 
-            barButton("bold", help: "Kalın (⌘B)", key: "b") { controller.toggleInline("**") }
-            barButton("italic", help: "İtalik (⌘I)", key: "i") { controller.toggleInline("*") }
-            barButton("chevron.left.forwardslash.chevron.right", help: "Kod") { controller.toggleInline("`") }
+            barButton("bold", help: "Kalın (⌘B)", key: "b") { edit { controller.toggleInline("**") } }
+            barButton("italic", help: "İtalik (⌘I)", key: "i") { edit { controller.toggleInline("*") } }
+            barButton("chevron.left.forwardslash.chevron.right", help: "Kod") { edit { controller.toggleInline("`") } }
 
             divider
 
@@ -631,13 +678,25 @@ struct EditorFormatBar: View {
             barButton("paperclip", help: "Dosya ya da görsel ekle (görselleri yapıştırabilir ya da sürükleyebilirsiniz)", action: onAttachFile)
 
             Spacer(minLength: Metrics.Spacing.s2)
+                .overlay {
+                    if let stickyTitle {
+                        Text(stickyTitle.isEmpty ? String(localized: "Başlıksız not") : stickyTitle)
+                            .textStyle(.headline)
+                            .foregroundStyle(Color.ds.inkSecondary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .padding(.horizontal, Metrics.Spacing.s2)
+                            .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    }
+                }
+                .animation(.snappy(duration: 0.2), value: stickyTitle == nil)
 
             textSizeControl
 
             divider
 
-            Button(action: onDone) {
-                Text("Bitti")
+            Button(action: isEditing ? onDone : onBeginEditing) {
+                Text(isEditing ? "Bitti" : "Düzenle")
                     .textStyle(.callout)
                     .fontWeight(.medium)
                     .foregroundStyle(Color.ds.accent)
@@ -647,7 +706,9 @@ struct EditorFormatBar: View {
             }
             .buttonStyle(.plain)
             .focusable(false)
-            .help(Text("Düzenlemeyi bitir (Esc)"))
+            .help(isEditing ? Text("Düzenlemeyi bitir (Esc)") : Text("Notu düzenle"))
+            .fixedSize()
+            .layoutPriority(1)
         }
         .padding(.horizontal, Metrics.Spacing.s3)
         .frame(height: 40)
@@ -667,7 +728,7 @@ struct EditorFormatBar: View {
         return Menu {
             ForEach(Self.listStyles, id: \.0) { style, symbol in
                 Button {
-                    controller.setLineStyle(style)
+                    edit { controller.setLineStyle(style) }
                 } label: {
                     Label(style.title, systemImage: style == currentStyle ? "checkmark" : symbol)
                 }

@@ -7,7 +7,7 @@ extension ModelContainer {
     static let cloudKitContainerID = "iCloud.com.talha.folio"
 
     static var folioSchema: Schema {
-        Schema([Notebook.self, NoteSection.self, Note.self, NoteTask.self])
+        Schema([Notebook.self, NoteSection.self, Note.self, NoteTask.self, NoteAttachment.self])
     }
 
     /// iCloud özel veritabanıyla senkronlanan kalıcı depo.

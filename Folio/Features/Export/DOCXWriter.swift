@@ -118,6 +118,10 @@ enum DOCXWriter {
                 xml += text.components(separatedBy: "\n").map { paragraph(style: "Code", run($0)) }.joined()
             case .table(let table):
                 xml += tableXML(table.normalized) + paragraph(style: nil, "")
+            case .image(let alt, _):
+                xml += paragraph(style: "Meta", run(String(localized: "[Görsel: \(alt)]")))
+            case .attachment(let name, _):
+                xml += paragraph(style: "Meta", run(String(localized: "[Ek: \(name)]")))
             case .rule:
                 xml += #"<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="DAD6CE"/></w:pBdr></w:pPr></w:p>"#
             }

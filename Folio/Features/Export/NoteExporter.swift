@@ -162,7 +162,11 @@ enum NoteExporter {
         if !tasks.isEmpty {
             parts.append(tasks.map { "- [\($0.isDone ? "x" : " ")] \($0.text)" }.joined(separator: "\n"))
         }
-        let body = note.body.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Ek referansları başka bir uygulamada anlamsız; adlarıyla yazılır.
+        let body = note.body
+            .replacing(/!\[([^\]]*)\]\(attachment:[0-9A-Fa-f-]{36}\)/) { "[Görsel: \($0.1)]" }
+            .replacing(/\[([^\]]+)\]\(attachment:[0-9A-Fa-f-]{36}\)/) { "[Ek: \($0.1)]" }
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         if !body.isEmpty { parts.append(body) }
         return parts.joined(separator: "\n\n") + "\n"
     }
@@ -296,6 +300,25 @@ enum NoteExporter {
             case .table(let table):
                 output.append(tableString(table.normalized, fonts: fonts))
                 add("", font: fonts.serif(6), style: paragraph(after: 6))
+            case .image(let alt, let source):
+                if let id = NoteAttachment.id(fromReference: source), let data = note.attachment(id)?.data,
+                   let image = NSImage(data: data) {
+                    // Sayfa genişliğine sığdır (A4, 2 cm kenar).
+                    let maxWidth: CGFloat = 480
+                    let scale = min(1, maxWidth / max(image.size.width, 1))
+                    let attachment = NSTextAttachment()
+                    attachment.image = image
+                    attachment.bounds = CGRect(x: 0, y: 0, width: image.size.width * scale, height: image.size.height * scale)
+                    let line = NSMutableAttributedString(attachment: attachment)
+                    line.append(NSAttributedString(string: "\n"))
+                    line.addAttribute(.paragraphStyle, value: paragraph(after: 4), range: NSRange(location: 0, length: line.length))
+                    output.append(line)
+                    if !alt.isEmpty { add(alt, font: fonts.sans(9), color: secondary, style: paragraph(after: 10)) }
+                } else {
+                    add(String(localized: "[Görsel: \(alt)]"), font: fonts.sans(10), color: secondary, style: paragraph(after: 9))
+                }
+            case .attachment(let name, _):
+                add("📎 " + name, font: fonts.sans(11), color: secondary, style: paragraph(after: 9))
             case .rule:
                 add("―――", font: fonts.sans(10), color: rule, style: paragraph(spacingBefore: 4, after: 10))
             }

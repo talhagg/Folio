@@ -4,6 +4,8 @@ import SwiftUI
 /// Kenar çubuğu: akıllı filtreler + DEFTERLER ağacı. Tasarım token'larıyla özel satırlar; ↑/↓ ile gezinilir.
 struct SidebarView: View {
     @Binding var selection: SidebarSelection?
+    /// Açık defterler (ana pencerede tutulur).
+    @Binding var expanded: Set<UUID>
     var now: Date = .now
     /// Her artışta yeni defter oluşturulur (⇧⌘N).
     var newNotebookRequest = 0
@@ -18,7 +20,6 @@ struct SidebarView: View {
     @Query(sort: \Notebook.sortIndex) private var notebooks: [Notebook]
     @Query private var notes: [Note]
 
-    @State private var expanded: Set<UUID> = []
     @State private var didSetInitialExpansion = false
     @State private var namePrompt: NamePrompt?
     @State private var deleteTarget: LibraryItem?
@@ -28,6 +29,15 @@ struct SidebarView: View {
     @State private var isEmptyTrashConfirmationShown = false
 
     private var trashCount: Int { notes.count(where: \.isTrashed) }
+
+    /// Etiketler ve not sayıları (çöptekiler hariç), alfabetik.
+    private var tagCounts: [(tag: String, count: Int)] {
+        var counts: [String: Int] = [:]
+        for note in notes where !note.isTrashed {
+            for tag in note.tags { counts[tag, default: 0] += 1 }
+        }
+        return counts.sorted { $0.key.localizedStandardCompare($1.key) == .orderedAscending }.map { ($0.key, $0.value) }
+    }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -42,6 +52,14 @@ struct SidebarView: View {
                         )
                     }
 
+                    sectionHeader("Görünümler")
+                        .padding(.top, Metrics.Spacing.s6 - 4)
+                        .padding(.bottom, Metrics.Spacing.s1)
+                    row(for: .board, title: String(localized: "Pano"), systemImage: "rectangle.split.3x1",
+                        count: notes.count(where: { !$0.isTrashed }))
+                    row(for: .calendar, title: String(localized: "Takvim"), systemImage: "calendar",
+                        count: notes.count(where: { !$0.isTrashed && ($0.dueDate != nil || $0.sortedTasks.contains { $0.dueDate != nil }) }))
+
                     notebooksHeader
                         .padding(.top, Metrics.Spacing.s6 - 4)
                         .padding(.bottom, Metrics.Spacing.s1)
@@ -52,6 +70,16 @@ struct SidebarView: View {
                             ForEach(notebook.sortedSections) { section in
                                 sectionRow(section)
                             }
+                        }
+                    }
+
+                    let tags = tagCounts
+                    if !tags.isEmpty {
+                        sectionHeader("Etiketler")
+                            .padding(.top, Metrics.Spacing.s6 - 4)
+                            .padding(.bottom, Metrics.Spacing.s1)
+                        ForEach(tags, id: \.tag) { item in
+                            row(for: .tag(item.tag), title: item.tag, systemImage: "number", count: item.count)
                         }
                     }
 
@@ -101,6 +129,14 @@ struct SidebarView: View {
     }
 
     // MARK: - Satırlar
+
+    private func sectionHeader(_ title: LocalizedStringKey) -> some View {
+        Text(title)
+            .textStyle(.sectionLabel)
+            .foregroundStyle(Color.ds.inkTertiary)
+            .padding(.horizontal, Metrics.Spacing.s2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
 
     private var notebooksHeader: some View {
         HStack {
@@ -414,13 +450,14 @@ struct SidebarView: View {
     // MARK: - Klavye
 
     private var visibleItems: [SidebarSelection] {
-        var items = SmartFilter.allCases.map(SidebarSelection.smart)
+        var items = SmartFilter.allCases.map(SidebarSelection.smart) + [.board, .calendar]
         for notebook in notebooks {
             items.append(.notebook(notebook.id))
             if expanded.contains(notebook.id) {
                 items += notebook.sortedSections.map { .section($0.id) }
             }
         }
+        items += tagCounts.map { .tag($0.tag) }
         items.append(.trash)
         return items
     }
@@ -658,9 +695,10 @@ private struct OptionalDraggable: ViewModifier {
 #if DEBUG
 private struct SidebarPreview: View {
     @State private var selection: SidebarSelection? = .smart(.all)
+    @State private var expanded: Set<UUID> = []
 
     var body: some View {
-        SidebarView(selection: $selection)
+        SidebarView(selection: $selection, expanded: $expanded)
             .frame(width: Metrics.Layout.sidebarWidth, height: 560)
     }
 }

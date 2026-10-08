@@ -16,6 +16,9 @@ struct SettingsView: View {
 struct GeneralSettingsView: View {
     @Bindable private var theme = ThemeStore.shared
     @AppStorage(EditorTextSize.storageKey) private var textSizeRaw = EditorTextSize.normal.rawValue
+    @AppStorage(Reminders.enabledKey) private var remindersEnabled = true
+    @AppStorage(Reminders.hourKey) private var reminderHour = 9
+    @AppStorage(QuickActions.hotKeyEnabledKey) private var hotKeyEnabled = true
 
     var body: some View {
         Form {
@@ -38,6 +41,35 @@ struct GeneralSettingsView: View {
             }
 
             Section {
+                Toggle("Hedef tarihlerde hatırlat", isOn: $remindersEnabled)
+                Picker("Saat", selection: $reminderHour) {
+                    ForEach(6..<23) { hour in
+                        Text(String(format: "%02d:00", hour)).tag(hour)
+                    }
+                }
+                .disabled(!remindersEnabled)
+            } header: {
+                Text("Hatırlatıcılar")
+            } footer: {
+                Text("Hedef tarihi olan notlar ve görevler için o günün bu saatinde bildirim gelir.")
+                    .textStyle(.caption)
+                    .foregroundStyle(Color.ds.inkSecondary)
+            }
+            .onChange(of: remindersEnabled) { ReminderScheduler.shared.scheduleSoon() }
+            .onChange(of: reminderHour) { ReminderScheduler.shared.scheduleSoon() }
+
+            Section {
+                Toggle("⌃⌥N ile her yerden yapışkan not", isOn: $hotKeyEnabled)
+                    .onChange(of: hotKeyEnabled) { _, enabled in GlobalHotKey.shared.setEnabled(enabled) }
+            } header: {
+                Text("Hızlı not")
+            } footer: {
+                Text("Menü çubuğundaki Folio simgesinden de hızlı not alabilirsiniz.")
+                    .textStyle(.caption)
+                    .foregroundStyle(Color.ds.inkSecondary)
+            }
+
+            Section {
                 Picker("Not yazı boyutu", selection: $textSizeRaw) {
                     ForEach(EditorTextSize.allCases) { size in
                         Text(size.menuTitle).tag(size.rawValue)
@@ -53,7 +85,7 @@ struct GeneralSettingsView: View {
         }
         .formStyle(.grouped)
         .scrollDisabled(true)
-        .frame(height: 300)
+        .frame(height: 560)
     }
 }
 

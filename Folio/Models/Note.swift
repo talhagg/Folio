@@ -22,6 +22,13 @@ final class Note {
     @Relationship(deleteRule: .cascade, inverse: \NoteTask.note)
     var tasks: [NoteTask]? = []
 
+    @Relationship(deleteRule: .cascade, inverse: \NoteAttachment.note)
+    var attachments: [NoteAttachment]? = []
+
+    func attachment(_ id: UUID) -> NoteAttachment? {
+        attachments?.first { $0.id == id }
+    }
+
     init(
         title: String,
         body: String = "",

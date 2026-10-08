@@ -5,7 +5,7 @@
 Bir güvenlik açığı bulursanız lütfen herkese açık issue açmak yerine GitHub'daki
 **Security → Report a vulnerability** (özel bildirim) özelliğini kullanın.
 
-## Güvenlik incelemesi — v0.3.2 (8 Ekim 2026)
+## Güvenlik incelemesi — v0.4 (8 Ekim 2026)
 
 ### Tehdit yüzeyi
 
@@ -13,6 +13,10 @@ Bir güvenlik açığı bulursanız lütfen herkese açık issue açmak yerine G
 |---|---|
 | Ağ erişimi | iCloud (CloudKit) özel veritabanı senkronu ve yalnızca kullanıcının başlattığı **URL'den içe aktarma**. URL içe aktarma yalnızca `http(s)` kabul eder, 30 sn zaman aşımı ve 20 MB sınırı vardır; içerik çalıştırılmaz (JavaScript yok), metne dönüştürülür. |
 | Uygulama içi tarayıcı | URL içe aktarmada sayfa WebKit ile gösterilir; yalnızca `http(s)` gezinmesine izin verilir, indirmeler açılmaz. Uygulama sayfaya yalnızca içeriği okuyan sabit bir betik çalıştırır (`outerHTML`), sayfaya veri yazmaz. Oturum çerezleri uygulamanın kendi WebKit deposunda kalır. |
+| Bildirimler | Yalnızca yerel bildirimler (UserNotifications); içerik not başlığı ve konumudur, sunucuya bir şey gönderilmez. |
+| Genel kısayol | ⌃⌥N, Carbon `RegisterEventHotKey` ile kaydedilir; klavye dinlenmez, erişilebilirlik izni gerekmez. |
+| Spotlight | Not başlığı, özeti ve etiketleri yalnızca bu Mac'in Spotlight dizinine yazılır; çöpe atılan notlar çıkarılır. |
+| Ekler | Kullanıcının seçtiği/yapıştırdığı dosyalar 25 MB sınırıyla saklanır; açılırken geçici klasöre yazılıp varsayılan uygulamayla açılır, uygulama içinde çalıştırılmaz. |
 | Kimlik bilgileri | Confluence token'ı Keychain'de (`kSecAttrAccessibleWhenUnlocked`) saklanır; yalnızca kayıtlı site ile **aynı sunucuya** giden isteklere eklenir. Kimlik bilgili bir istek başka bir sunucuya yönlendirilirse iptal edilir. |
 | Dosya içe/dışa aktarma | Yalnızca kullanıcının seçtiği/sürüklediği dosyalar okunur ve yalnızca kaydetme penceresinde seçilen konuma yazılır (`files.user-selected.read-write`). Boyut 50 MB, ZIP açılmış boyutu 100 MB ile sınırlı (zip bombası koruması); Office makroları ve gömülü nesneler yok sayılır. |
 | Dosya sistemi | Yalnızca SwiftData deposu (uygulama sandbox'ı içinde) ve `UserDefaults` (pencere sütun genişlikleri). |

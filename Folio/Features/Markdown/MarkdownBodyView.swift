@@ -4,6 +4,7 @@ import SwiftUI
 /// Tabloya tıklamak tablo düzenleyicisini, başka bir yere tıklamak metin düzenlemeyi açar.
 struct MarkdownBodyView: View {
     let text: String
+    var attachments: [UUID: NoteAttachment] = [:]
     var onEditText: () -> Void = {}
     var onEditTable: (ParsedBlock) -> Void = { _ in }
 
@@ -32,6 +33,10 @@ struct MarkdownBodyView: View {
         switch parsed.block {
         case .table(let table):
             MarkdownTableView(table: table, onEdit: { onEditTable(parsed) })
+        case .image(let alt, let source):
+            AttachmentImageView(attachment: NoteAttachment.id(fromReference: source).flatMap { attachments[$0] }, source: source, alt: alt)
+        case .attachment(let name, let source):
+            AttachmentChip(attachment: NoteAttachment.id(fromReference: source).flatMap { attachments[$0] }, name: name)
         default:
             textBlock(parsed.block)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -107,7 +112,7 @@ struct MarkdownBodyView: View {
                 .fill(Color.ds.separator)
                 .frame(height: 1)
                 .padding(.vertical, Metrics.Spacing.s2)
-        case .table:
+        case .table, .image, .attachment:
             EmptyView()
         }
     }
@@ -123,11 +128,20 @@ struct MarkdownBodyView: View {
     }
 
     private func inline(_ text: String) -> AttributedString {
-        Self.inline(text)
+        Self.displayInline(text)
     }
 
+    /// Önizleme: etiketler ve `[[bağlantılar]]` tıklanabilir.
+    static func displayInline(_ text: String) -> AttributedString {
+        parse(NoteLinkSyntax.displayMarkdown(MarkdownNormalizer.emphasisSpacing(text)))
+    }
+
+    /// Dışa aktarma: bağlantılar düz metin.
     static func inline(_ text: String) -> AttributedString {
-        let text = MarkdownNormalizer.emphasisSpacing(text)
+        parse(NoteLinkSyntax.plain(MarkdownNormalizer.emphasisSpacing(text)))
+    }
+
+    private static func parse(_ text: String) -> AttributedString {
         let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
         return (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
     }
@@ -187,7 +201,7 @@ struct MarkdownTableView: View {
 
     /// Hücre sütun genişliğini doldurur ki dikey çizgiler tüm satırlarda hizalı olsun.
     private func cellView(_ text: String, isHeader: Bool, isLast: Bool) -> some View {
-        Text(MarkdownBodyView.inline(text))
+        Text(MarkdownBodyView.displayInline(text))
             .font(.system(size: (13 * scale).rounded(), weight: isHeader ? .semibold : .regular))
             .foregroundStyle(Color.ds.ink)
             .textSelection(.enabled)

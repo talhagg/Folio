@@ -23,6 +23,14 @@ targets:
     platform: macOS
     sources:
       - path: Folio
+    info:
+      path: Folio/Info.plist
+      properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleURLTypes:
+          - CFBundleURLName: com.talha.folio
+            CFBundleURLSchemes: [folio]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.talha.folio
@@ -30,8 +38,8 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Folio
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
         GENERATE_INFOPLIST_FILE: YES
-        MARKETING_VERSION: "0.3.2"
-        CURRENT_PROJECT_VERSION: "5"
+        MARKETING_VERSION: "0.4"
+        CURRENT_PROJECT_VERSION: "6"
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: accent
         CODE_SIGN_ENTITLEMENTS: Folio/Folio.entitlements
         ENABLE_HARDENED_RUNTIME: YES

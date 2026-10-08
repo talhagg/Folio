@@ -11,6 +11,10 @@ enum MarkdownBlock: Equatable, Sendable {
     case code(language: String?, text: String)
     case table(MarkdownTable)
     case rule
+    /// Tek başına satırdaki `![ad](kaynak)`.
+    case image(alt: String, source: String)
+    /// Tek başına satırdaki `[ad](attachment:<id>)`.
+    case attachment(name: String, source: String)
 
     struct ListItem: Equatable, Sendable {
         var text: String
@@ -113,6 +117,18 @@ enum MarkdownDocument {
                 continue
             }
 
+            // Görsel ya da ek (satırda tek başına)
+            if let match = line.wholeMatch(of: /!\[([^\]]*)\]\(([^)\s]+)\)/) {
+                blocks.append(.init(block: .image(alt: String(match.1), source: String(match.2)), lines: start..<index + 1))
+                index += 1
+                continue
+            }
+            if let match = line.wholeMatch(of: /\[([^\]]+)\]\((attachment:[0-9A-Fa-f-]{36})\)/) {
+                blocks.append(.init(block: .attachment(name: String(match.1), source: String(match.2)), lines: start..<index + 1))
+                index += 1
+                continue
+            }
+
             // Başlık
             if let heading = heading(line) {
                 blocks.append(.init(block: .heading(level: heading.level, text: heading.text), lines: start..<index + 1))
@@ -174,6 +190,11 @@ enum MarkdownDocument {
             blocks.append(.init(block: .paragraph(paragraph.joined(separator: "\n")), lines: start..<index))
         }
         return blocks
+    }
+
+    /// Metinde geçen ek kimlikleri.
+    static func attachmentIDs(in text: String) -> [UUID] {
+        text.matches(of: /attachment:([0-9A-Fa-f-]{36})/).compactMap { UUID(uuidString: String($0.1)) }
     }
 
     /// Gövdede `lines` aralığını `replacement` ile değiştirir.
@@ -245,6 +266,7 @@ enum MarkdownDocument {
 
     private static func startsBlock(_ line: String, next: String?) -> Bool {
         if line.hasPrefix("```") || line.hasPrefix(">") || heading(line) != nil { return true }
+        if line.wholeMatch(of: /!?\[[^\]]*\]\([^)\s]+\)/) != nil, line.hasPrefix("!") || line.contains("](attachment:") { return true }
         if bulletItem(line) != nil || orderedItem(line) != nil { return true }
         if line.contains("|"), let next, isTableSeparator(next) { return true }
         return false

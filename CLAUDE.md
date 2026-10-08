@@ -29,12 +29,17 @@ Note       id, title, body (String, markdown), createdAt, updatedAt, dueDate: Da
            isPinned, statusOverrideRaw: String? (sadece "blocked" için), section: NoteSection?, tasks: [NoteTask]?,
            deletedAt: Date? (Son Silinenler), trashedFromPath: String?
 NoteTask   id, text, isDone, dueDate: Date?, sortIndex, note: Note?
+NoteAttachment id, fileName, typeIdentifier, data (externalStorage → CKAsset), byteCount, createdAt, note: Note?
+           Notta `![ad](attachment:<id>)` / `[ad](attachment:<id>)` ile anılır; metinden çıkan ek düzenleme bitince silinir.
 ```
 
 - `SwiftUI.Section` ile çakışmasın diye model adı **`NoteSection`**.
 - `Note.progress` computed: `done / total` (görev yoksa `nil`).
 - `Note.status` computed: override `blocked` ise Bloke; yoksa progress 0 → todo, 0<p<1 → doing, 1 → done.
 - `Note.isOverdue`: `dueDate < now && status != .done`.
+- `statusOverrideRaw`: "blocked" her notta; görevi olmayan notta panodan seçilen "doing"/"done" de burada saklanır.
+- Etiketler (`#etiket`) ve not bağlantıları (`[[Başlık]]`) not metninden okunur; modelde alan yoktur.
+- Şema değişikliği (yeni model/alan) yayından önce CloudKit Console'da Production'a deploy edilmelidir.
 - Her düzenlemede `updatedAt = .now`.
 - Silme önce **Son Silinenler**'e taşır (`deletedAt`); 90 gün sonra açılışta/öne gelince kalıcı silinir. Defter/bölüm silinince notları çöpe gider, kaybolmaz. Çöpteki notlar diğer tüm görünüm ve sayaçlardan hariçtir.
 - SwiftData inverse'i ilişkinin yalnızca tek tarafında (to-many tarafı) tanımlanır; iki tarafta yazmak derleme hatası verir.

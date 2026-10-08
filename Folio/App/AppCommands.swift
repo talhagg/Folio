@@ -17,6 +17,15 @@ struct AppCommands: Commands {
             Button("Yeni Defter") { actions?.newNotebook() }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
                 .disabled(actions == nil)
+            Menu("Şablondan Yeni Not") {
+                ForEach(NoteTemplate.allCases) { template in
+                    Button(template.title) { actions?.newFromTemplate(template) }
+                }
+            }
+            .disabled(actions == nil)
+            Button("Yeni Yapışkan Not") { actions?.newSticky() }
+                .keyboardShortcut("n", modifiers: [.command, .option])
+                .disabled(actions == nil)
         }
 
         CommandGroup(after: .importExport) {
@@ -50,6 +59,10 @@ struct AppCommands: Commands {
         }
 
         CommandMenu("Not") {
+            Button("Yapışkan Not Olarak Aç") { actions?.openSticky?() }
+                .keyboardShortcut("s", modifiers: [.command, .option])
+                .disabled(actions?.openSticky == nil)
+            Divider()
             Button(actions?.isPinned == true ? "Sabitlemeyi Kaldır" : "Sabitle") { actions?.togglePin?() }
                 .keyboardShortcut("p", modifiers: .command)
                 .disabled(actions?.togglePin == nil)

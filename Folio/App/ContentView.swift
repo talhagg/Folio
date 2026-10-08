@@ -1,3 +1,4 @@
+import CoreSpotlight
 import SwiftData
 import SwiftUI
 
@@ -5,6 +6,7 @@ import SwiftUI
 struct ContentView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openWindow) private var openWindow
     @Query(sort: \Note.updatedAt, order: .reverse) private var allNotes: [Note]
     @Query(sort: \Notebook.sortIndex) private var notebooks: [Notebook]
 
@@ -25,6 +27,8 @@ struct ContentView: View {
         var fileName: String
     }
     @State private var isThemePickerShown = false
+    /// Kenar çubuğunda açık defterler; pano/liste düzeni değişince kaybolmasın diye burada.
+    @State private var expandedNotebooks: Set<UUID> = []
     @FocusState private var isSearchFocused: Bool
 
     private let sidebarWidth = WindowLayout.storedWidth(
@@ -60,52 +64,23 @@ struct ContentView: View {
     }
 
     var body: some View {
-        NavigationSplitView {
-            SidebarView(
-                selection: $selection,
-                newNotebookRequest: newNotebookRequest,
-                onNewNote: { addNote(in: $0) },
-                onImportFiles: { isFileImporterShown = true },
-                onImportURL: { isURLImportShown = true },
-                onExport: { notes, name in export(notes, as: .json, fallbackName: name) }
-            )
-                .persistWidth(key: WindowLayout.sidebarWidthKey)
-                .navigationSplitViewColumnWidth(
-                    min: Metrics.Layout.sidebarMinWidth,
-                    ideal: sidebarWidth,
-                    max: Metrics.Layout.sidebarMaxWidth
-                )
-        } content: {
-            NoteListView(
-                filter: filter,
-                dateFilter: $dateFilter,
-                selectedNoteID: $selectedNoteID,
-                onClearSearch: { searchText = "" },
-                onDelete: { deleteRequest = $0 },
-                onExport: { note, format in export([note], as: format) }
-            )
-            .persistWidth(key: WindowLayout.listWidthKey)
-            // fileImporter ile aynı görünümde olursa biri çalışmıyor; dışa aktarma liste sütununda.
-            .fileExporter(
-                isPresented: Binding { exportRequest != nil } set: { if !$0 { exportRequest = nil } },
-                document: exportRequest?.document,
-                contentType: exportRequest?.format.contentType ?? .data,
-                defaultFilename: exportRequest?.fileName
-            ) { result in
-                if case .failure(let error) = result {
-                    importMessage = error.localizedDescription
+        // Pano tüm genişliği kullanır: iki sütun (kenar çubuğu + pano); diğer görünümler üç sütun.
+        Group {
+            if selection == .board {
+                NavigationSplitView {
+                    sidebar
+                } detail: {
+                    BoardView(onOpen: { show($0) })
                 }
-                exportRequest = nil
+            } else {
+                NavigationSplitView {
+                    sidebar
+                } content: {
+                    contentColumn
+                } detail: {
+                    detail
+                }
             }
-            .dropDestination(for: URL.self) { urls, _ in
-                let files = urls.filter(\.isFileURL)
-                guard !files.isEmpty else { return false }
-                importFiles(files)
-                return true
-            }
-            .navigationSplitViewColumnWidth(min: 260, ideal: listWidth, max: 420)
-        } detail: {
-            detail
         }
         .navigationTitle(title)
         .navigationSubtitle(subtitle)
@@ -145,16 +120,47 @@ struct ContentView: View {
                         .frame(width: 300)
                 }
 
-                Button { addNote() } label: {
+                // Bölünmüş düğme: tıklama boş not, ok şablon menüsü.
+                Menu {
+                    Button("Boş Not") { addNote() }
+                    Divider()
+                    ForEach(NoteTemplate.allCases) { template in
+                        Button { addNote(template: template) } label: {
+                            Label(template.title, systemImage: template.symbolName)
+                        }
+                    }
+                } label: {
                     Label("Yeni Not", systemImage: "square.and.pencil")
                         .labelStyle(.titleAndIcon)
+                } primaryAction: {
+                    addNote()
                 }
+                .menuStyle(.button)
                 .buttonStyle(.borderedProminent)
                 .tint(Color.ds.accent)
-                .help(Text("Yeni not (⌘N)"))
+                .help(Text("Yeni not (⌘N) — ok: şablondan"))
             }
         }
         .focusedSceneValue(\.noteActions, commandActions)
+        // Uygulama içi bağlantılar: not, etiket, [[başlık]] — önizleme, editör, bildirim ve Spotlight'tan.
+        .environment(\.openURL, OpenURLAction { url in
+            guard let link = AppLink(url: url) else { return .systemAction }
+            AppNavigator.shared.open(link)
+            return .handled
+        })
+        .onAppear { QuickActions.shared.openWindow = openWindow }
+        // Spotlight sonucundan açılış.
+        .onContinueUserActivity(CSSearchableItemActionType) { activity in
+            if let id = SpotlightIndexer.noteID(from: activity) { AppNavigator.shared.open(.note(id)) }
+        }
+        .onOpenURL { url in
+            if let link = AppLink(url: url) { AppNavigator.shared.open(link) }
+        }
+        .onChange(of: AppNavigator.shared.request) { _, request in
+            guard let request else { return }
+            AppNavigator.shared.request = nil
+            navigate(to: request)
+        }
         .fileImporter(
             isPresented: $isFileImporterShown,
             allowedContentTypes: FileImporter.supportedTypes,
@@ -218,6 +224,66 @@ struct ContentView: View {
         .onChange(of: selectedNote.map { filter.matches($0) } ?? false) { clearHiddenSelection() }
     }
 
+    private var sidebar: some View {
+        SidebarView(
+            selection: $selection,
+            expanded: $expandedNotebooks,
+            newNotebookRequest: newNotebookRequest,
+            onNewNote: { addNote(in: $0) },
+            onImportFiles: { isFileImporterShown = true },
+            onImportURL: { isURLImportShown = true },
+            onExport: { notes, name in export(notes, as: .json, fallbackName: name) }
+        )
+        .persistWidth(key: WindowLayout.sidebarWidthKey)
+        // fileImporter ile aynı görünümde olursa biri çalışmıyor; dışa aktarma kenar çubuğunda (her düzende var).
+        .fileExporter(
+            isPresented: Binding { exportRequest != nil } set: { if !$0 { exportRequest = nil } },
+            document: exportRequest?.document,
+            contentType: exportRequest?.format.contentType ?? .data,
+            defaultFilename: exportRequest?.fileName
+        ) { result in
+            if case .failure(let error) = result {
+                importMessage = error.localizedDescription
+            }
+            exportRequest = nil
+        }
+        .navigationSplitViewColumnWidth(
+            min: Metrics.Layout.sidebarMinWidth,
+            ideal: sidebarWidth,
+            max: Metrics.Layout.sidebarMaxWidth
+        )
+    }
+
+    private var contentColumn: some View {
+        Group {
+            if selection == .calendar {
+                CalendarView(selectedNoteID: $selectedNoteID)
+            } else {
+                noteList
+            }
+        }
+        .persistWidth(key: WindowLayout.listWidthKey)
+        .dropDestination(for: URL.self) { urls, _ in
+            let files = urls.filter(\.isFileURL)
+            guard !files.isEmpty else { return false }
+            importFiles(files)
+            return true
+        }
+        .navigationSplitViewColumnWidth(min: 260, ideal: listWidth, max: 420)
+    }
+
+    private var noteList: some View {
+        NoteListView(
+            filter: filter,
+            dateFilter: $dateFilter,
+            selectedNoteID: $selectedNoteID,
+            onClearSearch: { searchText = "" },
+            onDelete: { deleteRequest = $0 },
+            onOpenSticky: { openWindow(id: StickyNote.windowID, value: $0.id) },
+            onExport: { note, format in export([note], as: format) }
+        )
+    }
+
     @ViewBuilder
     private var detail: some View {
         if let selectedNote {
@@ -263,6 +329,12 @@ struct ContentView: View {
             return section(id)?.name ?? "Folio"
         case .trash:
             return String(localized: "Son Silinenler")
+        case .tag(let tag):
+            return "#" + tag
+        case .board:
+            return String(localized: "Pano")
+        case .calendar:
+            return String(localized: "Takvim")
         case nil:
             return "Folio"
         }
@@ -314,6 +386,10 @@ struct ContentView: View {
         if let note {
             exportNote = { format in export([note], as: format) }
         }
+        var openSticky: (@MainActor () -> Void)?
+        if let note, !note.isTrashed {
+            openSticky = { openWindow(id: StickyNote.windowID, value: note.id) }
+        }
         let exportAll: @MainActor () -> Void = {
             export(allNotes.filter { !$0.isTrashed }, as: .json, fallbackName: String(localized: "Folio Yedek"))
         }
@@ -332,7 +408,10 @@ struct ContentView: View {
             importFiles: { isFileImporterShown = true },
             importURL: { isURLImportShown = true },
             exportNote: exportNote,
-            exportAll: exportAll
+            exportAll: exportAll,
+            openSticky: openSticky,
+            newSticky: { newSticky() },
+            newFromTemplate: { addNote(template: $0) }
         )
     }
 
@@ -350,6 +429,49 @@ struct ContentView: View {
         } catch {
             importMessage = String(localized: "Dışa aktarılamadı: \(error.localizedDescription)")
         }
+    }
+
+    private func navigate(to link: AppLink) {
+        NSApp.activate()
+        switch link {
+        case .note(let id):
+            guard let note = allNotes.first(where: { $0.id == id }) else { return }
+            show(note)
+        case .noteTitle(let title):
+            let key = NoteLinkSyntax.normalizedTag(title)
+            if let note = allNotes.first(where: { !$0.isTrashed && NoteLinkSyntax.normalizedTag($0.title) == key }) {
+                show(note)
+            } else {
+                // Bağlanan not yoksa oluştur (seçili bölümde).
+                let section = context.sectionForNewNote(selection: selection == .trash ? nil : selection)
+                let note = context.addNote(in: section, title: title)
+                show(note)
+            }
+        case .tag(let tag):
+            searchText = ""
+            dateFilter = .all
+            selectedNoteID = nil
+            selection = .tag(NoteLinkSyntax.normalizedTag(tag))
+        }
+    }
+
+    /// Notu görünür kılıp seçer: görünüm notu kapsamıyorsa notun bölümüne geçer.
+    private func show(_ note: Note) {
+        searchText = ""
+        dateFilter = .all
+        if note.isTrashed {
+            selection = .trash
+        } else if !(selection?.includes(note, now: .now) ?? false) {
+            selection = note.section.map { .section($0.id) } ?? .smart(.all)
+        }
+        selectedNoteID = note.id
+    }
+
+    /// Seçili bölümde boş bir not oluşturup yapışkan pencerede açar.
+    private func newSticky() {
+        let section = context.sectionForNewNote(selection: selection == .trash ? nil : selection)
+        let note = context.addNote(in: section)
+        openWindow(id: StickyNote.windowID, value: note.id)
     }
 
     private func importFiles(_ urls: [URL]) {
@@ -384,13 +506,25 @@ struct ContentView: View {
         selectedNoteID = ordered.first?.id
     }
 
+    private func addNote(template: NoteTemplate) {
+        if selection == .trash || selection.map({ if case .tag = $0 { true } else { false } }) == true {
+            selection = .smart(.all)
+        }
+        searchText = ""
+        let section = context.sectionForNewNote(selection: selection)
+        let note = context.addNote(from: template, in: section)
+        if let selection, !selection.includes(note, now: .now) || selection.isView { self.selection = .section(section.id) }
+        if !filter.matches(note) { dateFilter = .all }
+        selectedNoteID = note.id
+    }
+
     /// `section` verilmezse seçime göre (seçili bölüm → defterin ilk bölümü → ilk defter).
     private func addNote(in section: NoteSection? = nil) {
         if selection == .trash { selection = .smart(.all) }
         searchText = ""
         let section = section ?? context.sectionForNewNote(selection: selection)
         let note = context.addNote(in: section)
-        if let selection, !selection.includes(note, now: .now) {
+        if let selection, !selection.includes(note, now: .now) || selection.isView {
             self.selection = .section(section.id)
         }
         if !filter.matches(note) {

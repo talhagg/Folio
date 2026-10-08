@@ -10,6 +10,7 @@ struct NoteListView: View {
     /// Silme isteği (onay ContentView'da).
     var onDelete: (Note) -> Void = { _ in }
     var onExport: (Note, ExportFormat) -> Void = { _, _ in }
+    var onOpenSticky: (Note) -> Void = { _ in }
 
     @Query private var fetchedNotes: [Note]
     @Query(sort: \Notebook.sortIndex) private var notebooks: [Notebook]
@@ -23,8 +24,10 @@ struct NoteListView: View {
         selectedNoteID: Binding<UUID?>,
         onClearSearch: (() -> Void)? = nil,
         onDelete: @escaping (Note) -> Void = { _ in },
+        onOpenSticky: @escaping (Note) -> Void = { _ in },
         onExport: @escaping (Note, ExportFormat) -> Void = { _, _ in }
     ) {
+        self.onOpenSticky = onOpenSticky
         self.onExport = onExport
         self.filter = filter
         self._dateFilter = dateFilter
@@ -158,6 +161,7 @@ struct NoteListView: View {
             Button("Kalıcı Olarak Sil…", role: .destructive) { onDelete(note) }
         } else {
             Button(note.isPinned ? "Sabitlemeyi Kaldır" : "Sabitle") { togglePin(note) }
+            Button("Yapışkan Not Olarak Aç") { onOpenSticky(note) }
             moveMenu(for: note, title: "Taşı")
             Menu("Dışa Aktar") {
                 ForEach(ExportFormat.allCases) { format in

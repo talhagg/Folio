@@ -16,6 +16,10 @@ struct NoteCommandActions {
     /// `nil` → seçili not yok.
     var exportNote: (@MainActor (ExportFormat) -> Void)?
     var exportAll: @MainActor () -> Void
+    /// `nil` → seçili not yok.
+    var openSticky: (@MainActor () -> Void)?
+    var newSticky: @MainActor () -> Void
+    var newFromTemplate: @MainActor (NoteTemplate) -> Void
 }
 
 struct NoteCommandActionsKey: FocusedValueKey {

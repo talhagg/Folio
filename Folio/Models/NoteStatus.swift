@@ -3,10 +3,11 @@ import SwiftUI
 enum NoteStatus: String, CaseIterable, Codable, Sendable {
     case todo, doing, done, blocked
 
-    /// Bloke override'ı ve ilerlemeden durumu çıkarır. Görev yoksa (`progress == nil`) başlanmadı sayılır.
+    /// Bloke override'ı ve ilerlemeden durumu çıkarır. Görevi olmayan notta durum elle (panodan)
+    /// belirlenir ve `overrideRaw`'da saklanır; yoksa başlanmadı sayılır.
     static func resolve(progress: Double?, overrideRaw: String?) -> NoteStatus {
         if overrideRaw == NoteStatus.blocked.rawValue { return .blocked }
-        guard let progress else { return .todo }
+        guard let progress else { return overrideRaw.flatMap(NoteStatus.init(rawValue:)) ?? .todo }
         if progress <= 0 { return .todo }
         if progress >= 1 { return .done }
         return .doing

@@ -23,6 +23,16 @@
   Tabloda *başlık/title* sütunu varsa her satır ayrı not olur.
 - **Dışa aktarma:** notu PDF, Word (.docx — gerçek tablolar ve başlık stilleriyle), Markdown ya da JSON olarak kaydedin
   (⇧⌘E PDF). Defter, bölüm ya da tüm notlar JSON yedeği olarak alınabilir ve görevleriyle geri yüklenir.
+- **Yapışkan notlar:** bir notu kendi küçük, renkli penceresinde açın (⌥⌘S ya da sağ tık); ⌥⌘N ile yeni yapışkan not.
+  6 renk, "üstte tut" ve yeniden başlatınca yerinde geri gelme. Renk ve konum bu Mac'e özeldir, içerik her yerde aynıdır.
+- **Etiketler ve bağlantılar:** metne `#etiket` yazın (kenar çubuğunda Etiketler); `[[Not adı]]` başka bir nota bağlar,
+  notun altında "Bu nota bağlananlar" listelenir.
+- **Pano ve takvim:** notlar durum sütunlarında (sürükleyerek durum değiştirin) ya da hedef tarihlerine göre ay takviminde.
+- **Şablonlar:** toplantı, sprint, günlük, proje ve hata kaydı (Yeni Not düğmesinin oku).
+- **Hatırlatıcılar:** hedef tarih gelince bildirim; bildirimden notu açın, görevi tamamlayın ya da erteleyin.
+- **Görsel ve dosya ekleri:** yapıştırın, sürükleyin ya da ataç düğmesi; görseller notta görünür, PDF'e gömülür.
+- **Menü çubuğu ve kısayol:** menü çubuğundan hızlı not; ⌃⌥N her uygulamadan yeni yapışkan not açar.
+- **Spotlight ve Kısayollar:** notlar Spotlight'ta aranır; Kısayollar/Siri ile not ekleyin, açın, arayın.
 - **Kaydırarak silme:** trackpad'de notu sola kaydırınca Sil düğmesi açılır; uzun kaydırma doğrudan siler (onaylı).
 - **iCloud senkronu:** notlar aynı Apple hesabındaki Mac'ler arasında senkronlanır.
 - **Tema:** toolbar'daki palet düğmesinden Sistem/Açık/Koyu görünüm ve 6 vurgu rengi.
@@ -48,7 +58,7 @@ Folio, Developer ID ile imzalı ve Apple tarafından notarize edilmiştir; ek bi
 İndirilen dosyanın bütünlüğünü sürüm notlarındaki SHA-256 ile doğrulayabilirsiniz:
 
 ```bash
-shasum -a 256 Folio-0.3.2.dmg
+shasum -a 256 Folio-0.4.dmg
 ```
 
 > iCloud senkronu için Mac'te iCloud'a giriş yapılmış ve **Sistem Ayarları → Apple Hesabı → iCloud**'da

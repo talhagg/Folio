@@ -47,6 +47,20 @@ enum SidebarSelection: Hashable, Sendable {
     case section(UUID)
     /// Son Silinenler.
     case trash
+    /// `#etiket` içeren notlar.
+    case tag(String)
+    /// Durum sütunlu pano.
+    case board
+    /// Hedef tarihli notlar ve görevler takvimi.
+    case calendar
+
+    /// Notları süzmeyen görünümler (pano, takvim, etiket): yeni not bölümünde açılır.
+    var isView: Bool {
+        switch self {
+        case .board, .calendar, .tag: true
+        default: false
+        }
+    }
 
     func includes(_ note: Note, now: Date, calendar: Calendar = .current) -> Bool {
         if self == .trash { return note.isTrashed }
@@ -60,6 +74,10 @@ enum SidebarSelection: Hashable, Sendable {
             return note.section?.notebook?.id == id
         case .section(let id):
             return note.section?.id == id
+        case .tag(let tag):
+            return note.tags.contains(tag)
+        case .board, .calendar:
+            return true
         }
     }
 }

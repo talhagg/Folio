@@ -94,6 +94,7 @@ enum MarkdownPreview {
     /// Liste önizlemesi için markdown işaretlerini atar, satırları birleştirir.
     static func plainText(_ markdown: String, limit: Int = 200) -> String {
         let lines = markdown
+            .replacing(/!?\[([^\]]*)\]\(attachment:[0-9A-Fa-f-]{36}\)/) { "📎 \($0.1)" }
             .split(whereSeparator: \.isNewline)
             .map { line in
                 line.trimmingCharacters(in: .whitespaces)

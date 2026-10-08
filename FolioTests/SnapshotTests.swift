@@ -97,6 +97,14 @@ struct SnapshotTests {
         try render(view, size: CGSize(width: 300, height: 200), name: "theme-picker-light", dark: false)
     }
 
+    @Test(arguments: ["board", "calendar"])
+    func views(name: String) throws {
+        let view = ContentView(selection: name == "board" ? .board : .calendar)
+            .modelContainer(SampleData.container())
+            .frame(width: 1240, height: 720)
+        try render(view, size: CGSize(width: 1240, height: 720), name: "view-\(name)", dark: false)
+    }
+
     @Test func trash() throws {
         let container = SampleData.container()
         let view = ContentView(selection: .trash)
@@ -108,7 +116,7 @@ struct SnapshotTests {
     @Test(arguments: ["light", "dark"])
     func sidebar(appearance: String) throws {
         let container = SampleData.container()
-        let view = SidebarView(selection: .constant(.smart(.all)))
+        let view = SidebarView(selection: .constant(.smart(.all)), expanded: .constant([]))
             .modelContainer(container)
             .frame(width: Metrics.Layout.sidebarWidth, height: 520)
         try render(view, size: CGSize(width: Metrics.Layout.sidebarWidth, height: 520), name: "sidebar-\(appearance)", dark: appearance == "dark")

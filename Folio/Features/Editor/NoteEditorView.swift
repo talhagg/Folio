@@ -17,6 +17,8 @@ struct NoteEditorView: View {
     @State private var tableSheet: TableSheet?
     @State private var editorController = MarkdownEditorController()
     @State private var currentLineStyle: MarkdownLineStyle = .body
+    @State private var isAttachImporterShown = false
+    @State private var attachError: String?
     @AppStorage(EditorTextSize.storageKey) private var textSizeRaw = EditorTextSize.normal.rawValue
 
     private enum Field: Hashable { case title }
@@ -70,6 +72,9 @@ struct NoteEditorView: View {
                     .padding(.bottom, Metrics.Spacing.s6)
 
                 bodySection
+
+                BacklinksView(note: note)
+                    .padding(.top, Metrics.Spacing.s6)
                 }
                 // Çöpteki not salt okunurdur; düzenlemek için geri yüklenir.
                 .disabled(note.isTrashed)
@@ -95,6 +100,7 @@ struct NoteEditorView: View {
                     currentStyle: currentLineStyle,
                     textSizeRaw: $textSizeRaw,
                     onInsertTable: { tableSheet = .new },
+                    onAttachFile: { isAttachImporterShown = true },
                     onDone: endEditingBody
                 )
                 .transition(.move(edge: .top).combined(with: .opacity))
@@ -106,6 +112,21 @@ struct NoteEditorView: View {
             if wasEditing && !isEditing { normalizeBody() }
         }
         .onDisappear { if isEditingBody { normalizeBody() } }
+        .fileImporter(isPresented: $isAttachImporterShown, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+            guard case .success(let urls) = result else { return }
+            let markdown = urls.compactMap { attach(.file($0)) }
+            guard !markdown.isEmpty else { return }
+            if isEditingBody {
+                editorController.insertBlock(markdown.joined(separator: "\n"))
+            } else {
+                setBody(MarkdownDocument.appendingBlock(markdown.joined(separator: "\n"), to: note.body))
+            }
+        }
+        .alert("Eklenemedi", isPresented: Binding { attachError != nil } set: { if !$0 { attachError = nil } }) {
+            Button("Tamam", role: .cancel) {}
+        } message: {
+            Text(attachError ?? "")
+        }
         .sheet(item: $tableSheet) { sheet in
             tableEditor(sheet)
         }
@@ -253,6 +274,7 @@ struct NoteEditorView: View {
                 text: bodyBinding,
                 scale: scale,
                 controller: editorController,
+                onAttach: { attach($0) },
                 onStyleChange: { currentLineStyle = $0 },
                 onEndEditing: { isEditingBody = false }
             )
@@ -260,10 +282,18 @@ struct NoteEditorView: View {
         } else {
             MarkdownBodyView(
                 text: note.body,
+                attachments: Dictionary((note.attachments ?? []).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first }),
                 onEditText: beginEditingBody,
                 onEditTable: { tableSheet = .edit($0) }
             )
             .frame(minHeight: 120, alignment: .topLeading)
+            // Önizlemeye bırakılan dosyalar notun sonuna eklenir.
+            .dropDestination(for: URL.self) { urls, _ in
+                let markdown = urls.filter(\.isFileURL).compactMap { attach(.file($0)) }
+                guard !markdown.isEmpty, !note.isTrashed else { return false }
+                setBody(MarkdownDocument.appendingBlock(markdown.joined(separator: "\n"), to: note.body))
+                return true
+            }
         }
     }
 
@@ -291,6 +321,26 @@ struct NoteEditorView: View {
     private func normalizeBody() {
         let normalized = MarkdownNormalizer.emphasisSpacing(note.body)
         if normalized != note.body { note.body = normalized }
+        // Metinden silinen eklerin dosyaları da silinir.
+        context.removeUnreferencedAttachments(of: note)
+    }
+
+    /// Eki oluşturur; metne yazılacak markdown'ı döndürür.
+    private func attach(_ input: AttachmentInput) -> String? {
+        do {
+            let attachment: NoteAttachment
+            switch input {
+            case .file(let url):
+                attachment = try context.addAttachment(to: note, fileURL: url)
+            case .image(let data, let type):
+                let name = String(localized: "Görsel \(Date.now.formatted(.dateTime.day().month().year().hour().minute()))") + "." + (type.preferredFilenameExtension ?? "png")
+                attachment = try context.addAttachment(to: note, data: data, fileName: name, type: type)
+            }
+            return attachment.markdown
+        } catch {
+            attachError = error.localizedDescription
+            return nil
+        }
     }
 }
 

@@ -236,13 +236,17 @@ struct MarkdownTextEditor: NSViewRepresentable {
     @Binding var text: String
     var scale: CGFloat
     let controller: MarkdownEditorController
+    var minHeight: CGFloat = 120
+    /// Yapıştırılan/bırakılan dosya ve görselleri eke çevirir; `nil` ise ek kabul edilmez.
+    var onAttach: ((AttachmentInput) -> String?)? = nil
     var onStyleChange: (MarkdownLineStyle) -> Void = { _ in }
     var onEndEditing: () -> Void = {}
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
     func makeNSView(context: Context) -> NSTextView {
-        let textView = NSTextView(usingTextLayoutManager: false)
+        let textView = FolioTextView(usingTextLayoutManager: false)
+        textView.onAttach = onAttach
         textView.delegate = context.coordinator
         textView.isRichText = false
         textView.importsGraphics = false
@@ -259,6 +263,8 @@ struct MarkdownTextEditor: NSViewRepresentable {
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
         textView.setAccessibilityLabel(String(localized: "Not gövdesi"))
+        // Bağlantı rengini biçimleyici verir; burada yalnızca imleç.
+        textView.linkTextAttributes = [.cursor: NSCursor.pointingHand]
         textView.string = text
         controller.textView = textView
         context.coordinator.restyle(textView)
@@ -268,6 +274,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
     func updateNSView(_ textView: NSTextView, context: Context) {
         context.coordinator.parent = self
         controller.textView = textView
+        (textView as? FolioTextView)?.onAttach = onAttach
         // Editör kendi değişikliğini nota yazarken SwiftUI görünümü senkron güncelleyebiliyor ve
         // bu sırada notun eski metnini okuyor; o anda metni ezmek imleci geri atıyordu.
         // Yalnızca dışarıdan gelen değişiklikleri (iCloud, geri yükleme…) yansıt.
@@ -288,7 +295,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
     func sizeThatFits(_ proposal: ProposedViewSize, nsView textView: NSTextView, context: Context) -> CGSize? {
         guard let width = proposal.width, width > 0, width.isFinite else { return nil }
         let height = Self.measuredHeight(of: textView.attributedString(), width: width) + textView.textContainerInset.height * 2
-        return CGSize(width: width, height: max(height, 120))
+        return CGSize(width: width, height: max(height, minHeight))
     }
 
     static func measuredHeight(of text: NSAttributedString, width: CGFloat) -> CGFloat {
@@ -336,6 +343,13 @@ struct MarkdownTextEditor: NSViewRepresentable {
             parent.onStyleChange(MarkdownLineStyle.detect(line).style)
         }
 
+
+        func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
+            let url = (link as? URL) ?? (link as? String).flatMap(URL.init(string:))
+            guard let url, let appLink = AppLink(url: url) else { return false }
+            AppNavigator.shared.open(appLink)
+            return true
+        }
 
         func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
             switch selector {
@@ -435,6 +449,16 @@ enum MarkdownStyler {
                 return
             }
 
+            if let match = attachmentLine.firstMatch(in: line, range: NSRange(location: 0, length: (line as NSString).length)) {
+                let hidden: [NSAttributedString.Key: Any] = [.foregroundColor: NSColor.clear, .font: NSFont.systemFont(ofSize: 0.5)]
+                let name = match.range(at: 2)
+                storage.addAttributes(hidden, range: NSRange(location: lineRange.location, length: name.location))
+                storage.addAttributes(hidden, range: NSRange(location: lineRange.location + name.upperBound, length: match.range.upperBound - name.upperBound))
+                storage.addAttributes([.foregroundColor: accent, .font: NSFont.systemFont(ofSize: body - 1, weight: .medium)],
+                                      range: NSRange(location: lineRange.location + name.location, length: name.length))
+                return
+            }
+
             let detected = MarkdownLineStyle.detect(line)
             let prefix = NSRange(location: lineRange.location, length: detected.prefixLength)
             switch detected.style {
@@ -490,6 +514,10 @@ enum MarkdownStyler {
         }
     }
 
+    /// `![ad](attachment:id)` ya da `[ad](attachment:id)` tek başına satırda.
+    private static let attachmentLine = try! NSRegularExpression(pattern: #"^(!?)\[([^\]]*)\]\(attachment:[0-9A-Fa-f-]{36}\)\s*$"#)
+    private static let tagLink = try! NSRegularExpression(pattern: #"(?<![\p{L}\p{N}_#/&\]\)])#(\p{L}[\p{L}\p{N}_\-/]{0,39})"#)
+    private static let wikiLink = try! NSRegularExpression(pattern: #"\[\[([^\[\]\n]{1,120})\]\]"#)
     private static let link = try! NSRegularExpression(pattern: #"\[([^\]]+)\]\((https?://[^)\s]+)\)"#)
 
     private static func styleInline(
@@ -512,6 +540,19 @@ enum MarkdownStyler {
         for match in code.matches(in: line, range: range) {
             storage.addAttributes([.font: mono(body - 2), .backgroundColor: codeBackground], range: shifted(match.range))
             dimMarkers(storage, match: match, markerLength: 1, offset: offset, color: tertiary)
+        }
+        for match in tagLink.matches(in: line, range: range) {
+            let tag = NoteLinkSyntax.normalizedTag((line as NSString).substring(with: match.range(at: 1)))
+            storage.addAttributes([.foregroundColor: accent, .link: AppLink.tag(tag).url], range: shifted(match.range))
+        }
+        for match in wikiLink.matches(in: line, range: range) {
+            let title = (line as NSString).substring(with: match.range(at: 1)).trimmingCharacters(in: .whitespaces)
+            storage.addAttributes([
+                .foregroundColor: accent, .underlineStyle: NSUnderlineStyle.single.rawValue,
+                .link: AppLink.noteTitle(title).url,
+            ], range: shifted(match.range(at: 1)))
+            storage.addAttribute(.foregroundColor, value: tertiary, range: NSRange(location: offset + match.range.location, length: 2))
+            storage.addAttribute(.foregroundColor, value: tertiary, range: NSRange(location: offset + match.range.upperBound - 2, length: 2))
         }
         for match in link.matches(in: line, range: range) {
             storage.addAttribute(.foregroundColor, value: tertiary, range: shifted(match.range))
@@ -538,6 +579,7 @@ struct EditorFormatBar: View {
     let currentStyle: MarkdownLineStyle
     @Binding var textSizeRaw: Int
     var onInsertTable: () -> Void
+    var onAttachFile: () -> Void = {}
     var onDone: () -> Void
 
     private var textSize: EditorTextSize { EditorTextSize(rawValue: textSizeRaw) ?? .normal }
@@ -589,6 +631,7 @@ struct EditorFormatBar: View {
             divider
 
             barButton("tablecells", help: "Tablo ekle (⌥⌘T)", key: "t", modifiers: [.command, .option], action: onInsertTable)
+            barButton("paperclip", help: "Dosya ya da görsel ekle (görselleri yapıştırabilir ya da sürükleyebilirsiniz)", action: onAttachFile)
 
             Spacer(minLength: Metrics.Spacing.s2)
 
